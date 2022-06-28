@@ -1,0 +1,7 @@
+[data-sidemenubutton]:hover {
+    color: #1d39c4;
+}
+
+[data-sidemenubutton] {
+    cursor: pointer;
+}
