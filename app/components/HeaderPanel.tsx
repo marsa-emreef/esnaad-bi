@@ -15,7 +15,7 @@ function toPascalCase(string: string) {
         .replace(new RegExp(/\w/), s => s.toUpperCase());
 }
 
-export function PanelHeader(props: { title: string }) {
+export function HeaderPanel(props: { title: string }) {
     const {$theme} = useContext(ThemeContext);
     const matches = useMatches();
     const {pathname} = matches[matches.length - 1];

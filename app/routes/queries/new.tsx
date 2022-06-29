@@ -8,7 +8,7 @@ import {query} from "~/db/esnaad.server";
 import type {ColumnsType} from "antd/lib/table";
 import {actionStateFunction, useRemixActionState, useRemixActionStateInForm} from "remix-hook-actionstate";
 import invariant from "tiny-invariant";
-import {PanelHeader} from "~/components/PanelHeader";
+import {HeaderPanel} from "~/components/HeaderPanel";
 import {PlainWhitePanel} from "~/components/PlainWhitePanel";
 import Label from "~/components/Label";
 import LabelWidth from "~/components/LabelWidth";
@@ -19,23 +19,29 @@ import {v4} from "uuid";
 
 export const action: ActionFunction = async ({request}) => {
     const formData = await request.formData();
-    const actionState:QueryModel = await actionStateFunction<QueryModel>({formData}) || {columns: [],sqlQuery:'',id:'',name:'',description:''};
+    const actionState: QueryModel = await actionStateFunction<QueryModel>({formData}) || {
+        columns: [],
+        sqlQuery: '',
+        id: '',
+        name: '',
+        description: ''
+    };
 
     const intent = formData.get('intent');
-    if(intent === 'save'){
+    if (intent === 'save') {
         const db = await loadDb();
         db.queries = db.queries || [];
 
-        const data:QueryModel = {
-            id : v4(),
-            columns : actionState.columns,
-            sqlQuery : actionState.sqlQuery,
-            name : actionState.name,
-            description : actionState.description
+        const data: QueryModel = {
+            id: v4(),
+            columns: actionState.columns,
+            sqlQuery: actionState.sqlQuery,
+            name: actionState.name,
+            description: actionState.description
         }
         db.queries?.push(data);
         await persistDb();
-        return redirect('/queries/'+data.id);
+        return redirect('/queries/' + data.id);
     }
     if (intent === 'runQuery') {
         const result: QueryResult = await query('select * from ADM_MST_AIR_BASES');
@@ -59,7 +65,7 @@ export const action: ActionFunction = async ({request}) => {
 const LABEL_WIDTH = 130;
 
 
-const columns: ColumnsType<ColumnModel> = [
+export const columns: ColumnsType<ColumnModel> = [
     {
         title: 'Enable', dataIndex: 'enabled',
         render: (value, record) => {
@@ -106,10 +112,8 @@ export default function NewRoute() {
         description: ''
     });
 
-    const hasColumns = state?.columns;
-
     return <Vertical h={'100%'} overflow={'auto'}>
-        <PanelHeader title={'New Query'}/>
+        <HeaderPanel title={'New Query'}/>
         <Vertical p={20}>
             <Form method={'post'} style={{display: 'flex', flexDirection: 'column'}}>
                 <PlainWhitePanel>
@@ -136,22 +140,22 @@ export default function NewRoute() {
                             }} defaultValue={state?.sqlQuery}/>
                         </Label>
                     </LabelWidth>
-                    <Horizontal hAlign={'right'} mT={10}>
+                    <Horizontal hAlign={'right'}>
                         <Button type={"primary"} htmlType={"submit"} name={'intent'} value={'runQuery'}>Run
                             Query</Button>
                     </Horizontal>
-                    {hasColumns &&
-                        <Vertical>
-                            <Horizontal vAlign={'center'}>
-                                <Divider orientation={"left"}>Column Mapping</Divider>
-                            </Horizontal>
-                            <Table size={'small'} columns={columns} dataSource={state?.columns}/>
-                            <Horizontal hAlign={'right'} mT={10}>
-                                <Button type={"primary"} htmlType={"submit"} name={'intent'}
-                                        value={'save'}>Save</Button>
-                            </Horizontal>
-                        </Vertical>
-                    }
+
+
+                    <Horizontal vAlign={'center'}>
+                        <Divider orientation={"left"}>Column Mapping</Divider>
+                    </Horizontal>
+                    <Table size={'small'} columns={columns} dataSource={state?.columns}/>
+                    <Horizontal hAlign={'right'} mT={10}>
+                        <Button type={"primary"} htmlType={"submit"} name={'intent'}
+                                value={'save'}>Save</Button>
+                    </Horizontal>
+
+
                 </PlainWhitePanel>
 
 
@@ -163,48 +167,51 @@ export default function NewRoute() {
 
 
 function NameColumnRenderer(props: { value: any, record: ColumnModel }) {
-    const [, setState,{useActionStateValue}] = useRemixActionStateInForm<QueryModel>();
+    const [, setState, {useActionStateValue}] = useRemixActionStateInForm<QueryModel>();
     return <Vertical>
-        <Input value={useActionStateValue(val => val?.columns.find(c => c.key === props.record.key)?.name)} onChange={(event) => {
-            setState((val: QueryModel) => {
-                const newVal: QueryModel = JSON.parse(JSON.stringify(val));
-                const newRecord = newVal.columns.find(t => t.key === props.record.key);
-                invariant(newRecord, 'record value is a must');
-                newRecord.name = event.target.value;
-                return newVal;
-            });
-        }}/>
+        <Input value={useActionStateValue(val => val?.columns.find(c => c.key === props.record.key)?.name)}
+               onChange={(event) => {
+                   setState((val: QueryModel) => {
+                       const newVal: QueryModel = JSON.parse(JSON.stringify(val));
+                       const newRecord = newVal.columns.find(t => t.key === props.record.key);
+                       invariant(newRecord, 'record value is a must');
+                       newRecord.name = event.target.value;
+                       return newVal;
+                   });
+               }}/>
     </Vertical>
 }
 
 
 function EnableColumnRenderer(props: { value: any, record: ColumnModel }) {
-    const [, setState,{useActionStateValue}] = useRemixActionStateInForm<QueryModel>();
+    const [, setState, {useActionStateValue}] = useRemixActionStateInForm<QueryModel>();
     return <Vertical>
-        <Checkbox checked={useActionStateValue(val => val?.columns.find(c => c.key === props.record.key)?.enabled)} onChange={(event) => {
-            setState((val: QueryModel) => {
-                const newVal: QueryModel = JSON.parse(JSON.stringify(val));
-                const newRecord = newVal.columns.find(t => t.key === props.record.key);
-                invariant(newRecord, 'column value is a must');
-                newRecord.enabled = event.target.checked;
-                return newVal;
-            });
-        }}/>
+        <Checkbox checked={useActionStateValue(val => val?.columns.find(c => c.key === props.record.key)?.enabled)}
+                  onChange={(event) => {
+                      setState((val: QueryModel) => {
+                          const newVal: QueryModel = JSON.parse(JSON.stringify(val));
+                          const newRecord = newVal.columns.find(t => t.key === props.record.key);
+                          invariant(newRecord, 'column value is a must');
+                          newRecord.enabled = event.target.checked;
+                          return newVal;
+                      });
+                  }}/>
     </Vertical>
 }
 
 function RendererColumnRenderer(props: { value: any, record: ColumnModel }) {
-    const [state, setState,{useActionStateValue}] = useRemixActionStateInForm<QueryModel & { renderers: Array<RendererModel> }>();
+    const [state, setState, {useActionStateValue}] = useRemixActionStateInForm<QueryModel & { renderers: Array<RendererModel> }>();
     return <Vertical>
-        <Select value={useActionStateValue(val => val?.columns.find(c => c.key === props.record.key)?.rendererId)} onSelect={(onSelectedValue: any) => {
-            setState((value) => {
-                const newVal: QueryModel & { renderers: RendererModel[] } = JSON.parse(JSON.stringify(value));
-                const column = newVal.columns.find(col => col.key === props.record.key);
-                invariant(column, 'Column object must not be undefined');
-                column.rendererId = onSelectedValue;
-                return {...newVal};
-            });
-        }}>
+        <Select value={useActionStateValue(val => val?.columns.find(c => c.key === props.record.key)?.rendererId)}
+                onSelect={(onSelectedValue: any) => {
+                    setState((value) => {
+                        const newVal: QueryModel & { renderers: RendererModel[] } = JSON.parse(JSON.stringify(value));
+                        const column = newVal.columns.find(col => col.key === props.record.key);
+                        invariant(column, 'Column object must not be undefined');
+                        column.rendererId = onSelectedValue;
+                        return {...newVal};
+                    });
+                }}>
             {state.renderers.map(renderer => {
                 return <Select.Option value={renderer.id} key={renderer.id}>{renderer.name}</Select.Option>
             })}

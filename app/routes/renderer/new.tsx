@@ -1,5 +1,5 @@
 import {Horizontal, Vertical} from "react-hook-components";
-import {PanelHeader} from "~/components/PanelHeader";
+import {HeaderPanel} from "~/components/HeaderPanel";
 import {actionStateFunction, useRemixActionState} from "remix-hook-actionstate";
 import LabelWidth from "~/components/LabelWidth";
 import {PlainWhitePanel} from "~/components/PlainWhitePanel";
@@ -19,7 +19,7 @@ export default function NewRendererRouter() {
     const [state, setState, {Form}] = useRemixActionState<RendererModel & { errors: RendererModel }>();
 
     return <Vertical>
-        <PanelHeader title={'New Renderer'}/>
+        <HeaderPanel title={'New Renderer'}/>
         <Vertical p={20}>
             <Form method={'post'}>
                 <PlainWhitePanel>
@@ -104,7 +104,7 @@ export const action: ActionFunction = async ({request}) => {
         db.renderer.push(data);
 
         await persistDb();
-        return redirect('/renderer/'+data.id);
+        return redirect('/renderer/' + data.id);
     }
     return json({...actionState, errors});
 }

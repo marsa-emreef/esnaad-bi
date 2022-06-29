@@ -1,6 +1,6 @@
 export interface DbModel {
     renderer?: Array<RendererModel>,
-    queries?:Array<QueryModel>
+    queries?: Array<QueryModel>
 }
 
 export interface RendererModel {
@@ -10,15 +10,15 @@ export interface RendererModel {
     rendererFunction: string
 }
 
-export interface QueryModel{
-    id:string,
+export interface QueryModel {
+    id: string,
     name: string,
     description: string,
     sqlQuery: string,
     columns: Array<ColumnModel>
 }
 
-export interface ColumnModel{
+export interface ColumnModel {
     key: string,
     type: string,
     name: string,

@@ -1,16 +1,16 @@
 import {Horizontal, Vertical} from "react-hook-components";
 import type {ActionFunction, LoaderFunction} from "@remix-run/node";
+import {json, redirect} from "@remix-run/node";
 import {loadDb, persistDb} from "~/db/db.server";
 import {useLoaderData} from "@remix-run/react";
 import type {RendererModel} from "~/db/DbModel";
 import {actionStateFunction, useRemixActionState} from "remix-hook-actionstate";
-import {PanelHeader} from "~/components/PanelHeader";
+import {HeaderPanel} from "~/components/HeaderPanel";
 import {PlainWhitePanel} from "~/components/PlainWhitePanel";
 import LabelWidth from "~/components/LabelWidth";
 import Label from "~/components/Label";
 import {Button, Input, Tooltip} from "antd";
 import {CodeEditor} from "~/components/CodeEditor";
-import {json, redirect} from "@remix-run/node";
 import {useEffect} from "react";
 import invariant from "tiny-invariant";
 
@@ -23,14 +23,17 @@ export const loader: LoaderFunction = async ({params}) => {
 export default function UpdateRendererRoute() {
     const renderer = useLoaderData<RendererModel>();
     const id = renderer.id;
-    const [state, setState, {Form,useActionStateValue}] = useRemixActionState<RendererModel & { errors?: RendererModel }>(renderer);
+    const [state, setState, {
+        Form,
+        useActionStateValue
+    }] = useRemixActionState<RendererModel & { errors?: RendererModel }>(renderer);
     useEffect(() => {
         setState(renderer);
         // eslint-disable-next-line
-    },[id]);
+    }, [id]);
 
     return <Vertical>
-        <PanelHeader title={state?.name || ''}/>
+        <HeaderPanel title={state?.name || ''}/>
         <Vertical p={20}>
             <Form method={'post'}>
                 <PlainWhitePanel>
@@ -76,7 +79,8 @@ export default function UpdateRendererRoute() {
                         </Label>
                     </LabelWidth>
                     <Horizontal hAlign={'right'}>
-                        <Button htmlType={'submit'} name={'intent'} type={"link"} value={'delete'} style={{marginRight:5}}>Delete</Button>
+                        <Button htmlType={'submit'} name={'intent'} type={"link"} value={'delete'}
+                                style={{marginRight: 5}}>Delete</Button>
                         <Button htmlType={'submit'} name={'intent'} type={"primary"} value={'update'}>Update</Button>
                     </Horizontal>
                 </PlainWhitePanel>
@@ -85,39 +89,39 @@ export default function UpdateRendererRoute() {
     </Vertical>
 }
 
-export const action:ActionFunction = async ({request}) => {
+export const action: ActionFunction = async ({request}) => {
     const formData = await request.formData();
     const state = await actionStateFunction<RendererModel>({formData});
-    const errors:any = {};
+    const errors: any = {};
     const intent = formData.get('intent');
-    if(intent === 'update'){
+    if (intent === 'update') {
         const db = await loadDb();
-        const renderer = db.renderer?.find(d => d.id === state?.id) ;
-        if(!state?.name){
+        const renderer = db.renderer?.find(d => d.id === state?.id);
+        if (!state?.name) {
             errors.name = 'Name is mandatory'
         }
-        if(!state?.description){
+        if (!state?.description) {
             errors.description = 'Description is mandatory'
         }
-        if(!state?.rendererFunction){
+        if (!state?.rendererFunction) {
             errors.rendererFunction = 'Renderer function is mandatory'
         }
         const hasErrors = Object.entries(errors).some(err => err);
-        if(hasErrors){
-            return json({...state,errors});
+        if (hasErrors) {
+            return json({...state, errors});
         }
-        invariant(renderer,'Renderer cannot be empty');
-        invariant(state?.rendererFunction,'Renderer function cannot be empty');
+        invariant(renderer, 'Renderer cannot be empty');
+        invariant(state?.rendererFunction, 'Renderer function cannot be empty');
         renderer.rendererFunction = state.rendererFunction;
         renderer.name = state.name;
         renderer.description = state.description;
         await persistDb();
     }
-    if(intent === 'delete'){
+    if (intent === 'delete') {
         const db = await loadDb();
         db.renderer = db.renderer?.filter(d => d.id !== state?.id);
         await persistDb();
         return redirect('/');
     }
-    return json({...state,errors});
+    return json({...state, errors});
 }
