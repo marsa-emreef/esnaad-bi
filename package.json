@@ -12,6 +12,8 @@
     "@remix-run/react": "^1.5.1",
     "@remix-run/serve": "^1.5.1",
     "@types/mssql": "^8.0.2",
+    "@types/uuid": "^8.3.4",
+    "@uiw/react-textarea-code-editor": "^2.0.2",
     "antd": "^4.21.3",
     "dotenv": "^16.0.1",
     "mssql": "^8.1.2",
@@ -20,7 +22,9 @@
     "react-hook-components": "^1.0.0-alpha.36",
     "react-hook-useobserver": "^1.0.0-alpha.19",
     "react-icons": "^4.4.0",
-    "remix-hook-actionstate": "^1.0.0-alpha.3"
+    "remix-hook-actionstate": "^1.0.0-alpha.7",
+    "tiny-invariant": "^1.2.0",
+    "uuid": "^8.3.2"
   },
   "devDependencies": {
     "@remix-run/dev": "^1.5.1",

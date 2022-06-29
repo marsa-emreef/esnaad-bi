@@ -22,8 +22,7 @@ export const loader: LoaderFunction = async () => {
 
 export const action: ActionFunction = async ({request}) => {
     const formData = await request.formData();
-    const actionState = await actionStateFunction<FormModel>({formData});
-
+    const actionState = await actionStateFunction<FormModel>({formData}) || {queryResultMap:undefined};
     const intent = formData.get('intent');
     if (intent === 'runQuery') {
         const result: QueryResult = await query('select * from ADM_MST_AIR_BASES');

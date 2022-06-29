@@ -1,9 +1,10 @@
-import type {MetaFunction} from "@remix-run/node";
+import type {LoaderFunction, MetaFunction} from "@remix-run/node";
 import type {LinksFunction} from "@remix-run/node";
 import {Links, LiveReload, Meta, Scripts, ScrollRestoration,} from "@remix-run/react";
 import styles from "antd/dist/antd.css";
-import AppShell from "~/components/AppShell";
+import AppShell,{loader as appShellLoader} from "~/components/AppShell";
 import {ThemeProvider} from "~/components/Theme";
+import codeEditorStyles from "@uiw/react-textarea-code-editor/dist.css";
 
 export const meta: MetaFunction = () => ({
     charset: "utf-8",
@@ -16,9 +17,17 @@ export const links: LinksFunction = () => {
         {
             rel: "stylesheet",
             href: styles
+        },
+        {
+            rel: "stylesheet",
+            href: codeEditorStyles
         }
     ]
 }
+export const loader:LoaderFunction = async (params) => {
+    return appShellLoader(params);
+}
+
 export default function App() {
     return (
         <html lang="en">
