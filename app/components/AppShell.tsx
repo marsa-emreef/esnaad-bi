@@ -42,15 +42,21 @@ export default function AppShell() {
                                     onClick={() => setMenuFold(menuFold => !menuFold)}/>
                         </Horizontal>
                     </Vertical>
-                    <Divider plain={true} style={{margin: 0}}></Divider>
+                    <Divider plain={true} style={{margin: 0}}/>
                     <Menu
                         mode="inline"
                         inlineCollapsed={!menuFold}
                         items={[
                             {
-                                label: 'New Queries',
+                                label: <Link to={'/queries/new'}>Queries</Link>,
                                 key: 'newQuery',
-                                icon: <SiMicrosoftsqlserver/>
+                                icon: <SiMicrosoftsqlserver/>,
+                                children: db.queries?.map(query => {
+                                    return {
+                                        label: <Link to={'/queries/' + query.id}>{query.name}</Link>,
+                                        key: query.id,
+                                    }
+                                })
                             },
                             {
                                 label: <Link to={'/renderer/new'}>Renderers</Link>,

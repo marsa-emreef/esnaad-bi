@@ -6,22 +6,15 @@ import {PlainWhitePanel} from "~/components/PlainWhitePanel";
 import Label from "~/components/Label";
 import {Button, Input, Tooltip} from "antd";
 import {CodeEditor} from "~/components/CodeEditor";
-import type {ActionFunction, LoaderFunction} from "@remix-run/node";
-import { json} from "@remix-run/node";
+import type {ActionFunction} from "@remix-run/node";
+import {json, redirect} from "@remix-run/node";
 import {loadDb, persistDb} from "~/db/db.server";
-import {useLoaderData} from "@remix-run/react";
 import {v4} from "uuid";
 import invariant from "tiny-invariant";
 import type {RendererModel} from "~/db/DbModel";
 
 
-export const loader: LoaderFunction = async () => {
-    const db = await loadDb();
-    return json(db)
-}
-
 export default function NewRendererRouter() {
-    const db = useLoaderData();
 
     const [state, setState, {Form}] = useRemixActionState<RendererModel & { errors: RendererModel }>();
 
@@ -49,7 +42,7 @@ export default function NewRendererRouter() {
                                         return {...val, description: e.target.value}
                                     })
                                 }}
-                                       status={state?.errors?.name ? "error" : ''}
+                                       status={state?.errors?.description ? "error" : ''}
                                 />
                             </Tooltip>
                         </Label>
@@ -101,23 +94,17 @@ export const action: ActionFunction = async ({request}) => {
         invariant(actionState?.name, 'Name is mandatory');
         invariant(actionState?.description, 'Description is mandatory');
         invariant(actionState?.rendererFunction, 'Render function is mandatory');
-        const hasId = actionState.id;
         db.renderer = db.renderer || [];
-        if (hasId) {
-            const persistedData = db.renderer.find(d => d.id === actionState.id);
-            invariant(persistedData, 'Persisted data cannot be empty');
-            persistedData.name = actionState.name;
-            persistedData.rendererFunction = actionState.rendererFunction;
-            persistedData.description = actionState.description;
-        } else {
-            db.renderer.push({
-                name: actionState?.name,
-                description: actionState?.description,
-                rendererFunction: actionState?.rendererFunction,
-                id: v4()
-            });
-        }
+        const data = {
+            name: actionState?.name,
+            description: actionState?.description,
+            rendererFunction: actionState?.rendererFunction,
+            id: v4()
+        };
+        db.renderer.push(data);
+
         await persistDb();
+        return redirect('/renderer/'+data.id);
     }
     return json({...actionState, errors});
 }
