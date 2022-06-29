@@ -3,13 +3,13 @@ import {createContext, useContext} from "react";
 import {Button, Checkbox, Input, Select, Table} from "antd";
 import TextArea from "antd/lib/input/TextArea";
 import type {ActionFunction, LoaderFunction} from "@remix-run/node";
-import { json} from "@remix-run/node";
-import type { QueryResult} from "~/db/esnaad.server";
+import {json} from "@remix-run/node";
+import type {QueryResult} from "~/db/esnaad.server";
 import {query} from "~/db/esnaad.server";
 import type {ColumnsType} from "antd/lib/table";
 import {actionStateFunction, useRemixActionState} from "remix-hook-actionstate";
 import type {Dispatch, SetObserverAction} from "react-hook-useobserver";
-import { emptySetObserver} from "react-hook-useobserver";
+import {emptySetObserver} from "react-hook-useobserver";
 import invariant from "tiny-invariant";
 import {PanelHeader} from "~/components/PanelHeader";
 import {PlainWhitePanel} from "~/components/PlainWhitePanel";
@@ -22,7 +22,7 @@ export const loader: LoaderFunction = async () => {
 
 export const action: ActionFunction = async ({request}) => {
     const formData = await request.formData();
-    const actionState = await actionStateFunction<FormModel>({formData}) || {queryResultMap:undefined};
+    const actionState = await actionStateFunction<FormModel>({formData}) || {queryResultMap: undefined};
     const intent = formData.get('intent');
     if (intent === 'runQuery') {
         const result: QueryResult = await query('select * from ADM_MST_AIR_BASES');

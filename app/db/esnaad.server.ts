@@ -2,10 +2,10 @@ import type {ConnectionPool} from "mssql";
 import sql from "mssql";
 
 const sqlConfig = {
-    user: process.env.DB_USER||'',// : "esnaadbi",
-    password: process.env.DB_PASSWORD||'',//"p@ssw0rd",
-    database: process.env.DB_NAME||'',//"esnaadTest",
-    server: process.env.DB_SERVER||'',//'localhost',
+    user: process.env.DB_USER || '',// : "esnaadbi",
+    password: process.env.DB_PASSWORD || '',//"p@ssw0rd",
+    database: process.env.DB_NAME || '',//"esnaadTest",
+    server: process.env.DB_SERVER || '',//'localhost',
     pool: {
         max: 10,
         min: 0,
@@ -26,7 +26,7 @@ export type QueryResult = {
 
 export async function query(query: string): Promise<QueryResult> {
     if (!pool) {
-        console.log('HERE WE HAVE SQL CONFIG',sqlConfig);
+        console.log('HERE WE HAVE SQL CONFIG', sqlConfig);
         pool = await sql.connect(sqlConfig)
     }
     const {recordset} = await sql.query(query);

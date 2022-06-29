@@ -6,12 +6,13 @@ import {PlainWhitePanel} from "~/components/PlainWhitePanel";
 import Label from "~/components/Label";
 import {Button, Input, Tooltip} from "antd";
 import {CodeEditor} from "~/components/CodeEditor";
-import {ActionFunction, json, LoaderFunction} from "@remix-run/node";
+import type {ActionFunction, LoaderFunction} from "@remix-run/node";
+import { json} from "@remix-run/node";
 import {loadDb, persistDb} from "~/db/db.server";
 import {useLoaderData} from "@remix-run/react";
 import {v4} from "uuid";
 import invariant from "tiny-invariant";
-import {RendererModel} from "~/db/DbModel";
+import type {RendererModel} from "~/db/DbModel";
 
 
 export const loader: LoaderFunction = async () => {
@@ -54,14 +55,17 @@ export default function NewRendererRouter() {
                         </Label>
                         <Label label={'Render Function'} vAlign={'top'}>
                             <Tooltip title={state?.errors?.rendererFunction}>
-                            <CodeEditor  language={'jsx'} placeholder="(value,record) => <div>{value}</div>"
-                                        style={{height: 200,border:state?.errors?.rendererFunction ? `1px solid red`:`1px solid #ccc`}}
-                                        onChange={(e) => {
-                                            setState(val => {
-                                                return {...val, rendererFunction: e.target.value}
-                                            })
-                                        }}
-                            />
+                                <CodeEditor language={'jsx'} placeholder="(value,record) => <div>{value}</div>"
+                                            style={{
+                                                height: 200,
+                                                border: state?.errors?.rendererFunction ? `1px solid red` : `1px solid #ccc`
+                                            }}
+                                            onChange={(e) => {
+                                                setState(val => {
+                                                    return {...val, rendererFunction: e.target.value}
+                                                })
+                                            }}
+                                />
                             </Tooltip>
                         </Label>
                     </LabelWidth>

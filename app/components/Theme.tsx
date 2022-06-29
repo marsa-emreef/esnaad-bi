@@ -1,13 +1,6 @@
 import React, {createContext} from "react";
-import type {
-    Dispatch,
-    Observer,
-    SetObserverAction} from "react-hook-useobserver";
-import {
-    emptyObserver,
-    emptySetObserver,
-    useObserver
-} from "react-hook-useobserver";
+import type {Dispatch, Observer, SetObserverAction} from "react-hook-useobserver";
+import {emptyObserver, emptySetObserver, useObserver} from "react-hook-useobserver";
 
 interface Theme {
     backgroundColor: string;

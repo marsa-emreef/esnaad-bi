@@ -1,12 +1,12 @@
 import fs from "fs/promises";
 import {join} from "path";
-import {DbModel} from "~/db/DbModel";
+import type {DbModel} from "~/db/DbModel";
 
 let db: DbModel | undefined = undefined;
 const dbDirectory = '.database';
 const dbName = 'db.json';
 
-export async function loadDb():Promise<DbModel> {
+export async function loadDb(): Promise<DbModel> {
     try {
         await fs.stat(dbDirectory);
     } catch (err) {
@@ -27,7 +27,7 @@ export async function loadDb():Promise<DbModel> {
 
 export async function persistDb() {
     try {
-        await fs.writeFile(join(dbDirectory, dbName),JSON.stringify(db));
+        await fs.writeFile(join(dbDirectory, dbName), JSON.stringify(db));
     } catch (err) {
         console.error(err);
     }

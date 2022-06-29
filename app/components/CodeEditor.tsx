@@ -1,7 +1,6 @@
-
 import React, {useEffect, useState} from "react";
 import CodeEditorClient from "~/components/CodeEditor.client";
-import {PluggableList} from "unified";
+import type {PluggableList} from "unified";
 import TextArea from "antd/lib/input/TextArea";
 
 export interface TextareaCodeEditorProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
@@ -26,13 +25,13 @@ export interface TextareaCodeEditorProps extends React.TextareaHTMLAttributes<HT
     onKeyDown?: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void | boolean;
 }
 
-export function CodeEditor(props:TextareaCodeEditorProps & React.RefAttributes<HTMLTextAreaElement>) {
-    const [mounted,setMounted] = useState(false);
+export function CodeEditor(props: TextareaCodeEditorProps & React.RefAttributes<HTMLTextAreaElement>) {
+    const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
         setMounted(true);
-    },[]);
-    if(!mounted){
+    }, []);
+    if (!mounted) {
         return <TextArea style={{...props.style}} value={'Loading ...'}>
         </TextArea>
     }
