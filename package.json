@@ -22,7 +22,7 @@
     "react-hook-components": "^1.0.0-alpha.36",
     "react-hook-useobserver": "^1.0.0-alpha.19",
     "react-icons": "^4.4.0",
-    "remix-hook-actionstate": "^1.0.0-alpha.9",
+    "remix-hook-actionstate": "^1.0.0-alpha.12",
     "tiny-invariant": "^1.2.0",
     "uuid": "^8.3.2"
   },
