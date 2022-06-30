@@ -6,8 +6,7 @@ import {json, redirect} from "@remix-run/node";
 import type {QueryResult} from "~/db/esnaad.server";
 import {query} from "~/db/esnaad.server";
 import type {ColumnsType} from "antd/lib/table";
-import {actionStateFunction, useRemixActionState, useRemixActionStateInForm} from "remix-hook-actionstate";
-import invariant from "tiny-invariant";
+import {actionStateFunction, useRemixActionState, useRemixActionStateInForm} from "~/remix-hook-actionstate";
 import {HeaderPanel} from "~/components/HeaderPanel";
 import {PlainWhitePanel} from "~/components/PlainWhitePanel";
 import Label from "~/components/Label";
@@ -17,6 +16,7 @@ import {loadDb, persistDb} from "~/db/db.server";
 import {useLoaderData} from "@remix-run/react";
 import {v4} from "uuid";
 import {validateErrors} from "~/routes/queries/validateErrors";
+import produce from "immer";
 
 
 
@@ -211,13 +211,10 @@ function NameColumnRenderer(props: { value: any, record: ColumnModel }) {
         <Tooltip title={error}>
         <Input status={error ? 'error' : ''} value={useActionStateValue(val => val?.columns.find(c => c.key === props.record.key)?.name)}
                onChange={(event) => {
-                   setState((val: QueryModel) => {
-                       const newVal: QueryModel = JSON.parse(JSON.stringify(val));
-                       const newRecord = newVal.columns.find(t => t.key === props.record.key);
-                       invariant(newRecord, 'record value is a must');
-                       newRecord.name = event.target.value;
-                       return newVal;
-                   });
+                   setState(produce((draft) => {
+                       const colIndex = draft.columns.findIndex(t => t.key === props.record.key);
+                       draft.columns[colIndex].name = event.target.value;
+                   }));
                }} disabled={!isEnabled}/>
         </Tooltip>
     </Vertical>
@@ -229,13 +226,10 @@ function EnableColumnRenderer(props: { value: any, record: ColumnModel }) {
     return <Vertical>
         <Checkbox checked={useActionStateValue(val => val?.columns.find(c => c.key === props.record.key)?.enabled)}
                   onChange={(event) => {
-                      setState((val: QueryModel) => {
-                          const newVal: QueryModel = JSON.parse(JSON.stringify(val));
-                          const newRecord = newVal.columns.find(t => t.key === props.record.key);
-                          invariant(newRecord, 'column value is a must');
-                          newRecord.enabled = event.target.checked;
-                          return newVal;
-                      });
+                      setState(produce((draft) => {
+                          const colIndex = draft.columns.findIndex(t => t.key === props.record.key);
+                          draft.columns[colIndex].enabled = event.target.checked;
+                      }));
                   }}/>
     </Vertical>
 }
@@ -248,14 +242,11 @@ function RendererColumnRenderer(props: { value: any, record: ColumnModel }) {
         <Tooltip title={error}>
             <Select status={error ? 'error' : ''} disabled={!isEnabled}
                     value={useActionStateValue(val => val?.columns.find(c => c.key === props.record.key)?.rendererId)}
-                    onSelect={(onSelectedValue: any) => {
-                        setState((value) => {
-                            const newVal: QueryModel & { renderers: RendererModel[] } = JSON.parse(JSON.stringify(value));
-                            const column = newVal.columns.find(col => col.key === props.record.key);
-                            invariant(column, 'Column object must not be undefined');
-                            column.rendererId = onSelectedValue;
-                            return {...newVal};
-                        });
+                    onSelect={(value: any) => {
+                        setState(produce((draft) => {
+                            const colIndex = draft.columns.findIndex(col => col.key === props.record.key);
+                            draft.columns[colIndex].rendererId = value;
+                        }));
                     }}>
                 {state.renderers.map(renderer => {
                     return <Select.Option value={renderer.id} key={renderer.id}>{renderer.name}</Select.Option>

@@ -1,6 +1,6 @@
 import {Horizontal, Vertical} from "react-hook-components";
 import {HeaderPanel} from "~/components/HeaderPanel";
-import {actionStateFunction, useRemixActionState} from "remix-hook-actionstate";
+import {actionStateFunction, useRemixActionState} from "~/remix-hook-actionstate";
 import LabelWidth from "~/components/LabelWidth";
 import {PlainWhitePanel} from "~/components/PlainWhitePanel";
 import Label from "~/components/Label";

@@ -4,7 +4,7 @@ import {json, redirect} from "@remix-run/node";
 import {loadDb, persistDb} from "~/db/db.server";
 import {useLoaderData} from "@remix-run/react";
 import type {RendererModel} from "~/db/DbModel";
-import {actionStateFunction, useRemixActionState} from "remix-hook-actionstate";
+import {actionStateFunction, useRemixActionState} from "~/remix-hook-actionstate";
 import {HeaderPanel} from "~/components/HeaderPanel";
 import {PlainWhitePanel} from "~/components/PlainWhitePanel";
 import LabelWidth from "~/components/LabelWidth";
@@ -20,7 +20,7 @@ export const loader: LoaderFunction = async ({params}) => {
     return json(db.renderer?.find(r => r.id === id));
 }
 
-export default function UpdateRendererRoute() {
+function UpdateRendererRoute(){
     const renderer = useLoaderData<RendererModel>();
     const id = renderer.id;
     const [state, setState, {

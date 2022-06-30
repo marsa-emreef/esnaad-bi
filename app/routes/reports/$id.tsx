@@ -1,7 +1,8 @@
+import {memo} from "react";
 import {Horizontal, Vertical} from "react-hook-components";
 import {HeaderPanel} from "~/components/HeaderPanel";
 import {PlainWhitePanel} from "~/components/PlainWhitePanel";
-import {actionStateFunction, useRemixActionState} from "remix-hook-actionstate";
+import {actionStateFunction, useRemixActionState} from "~/remix-hook-actionstate";
 import Label from "~/components/Label";
 import {Button, Divider, Input, Select, Table, Tooltip} from "antd";
 import type {ColumnFilterModel, QueryModel, RendererModel, ReportModel} from "~/db/DbModel";
@@ -12,7 +13,8 @@ import {useLoaderData} from "@remix-run/react";
 import {v4} from "uuid";
 import invariant from "tiny-invariant";
 import {query} from "~/db/esnaad.server";
-
+import type {Dispatch, SetObserverAction} from "react-hook-useobserver";
+import produce, {original} from "immer";
 
 export const loader: LoaderFunction = async () => {
     const db = await loadDb();
@@ -33,12 +35,98 @@ export const loader: LoaderFunction = async () => {
         }
     });
 }
+
+
+type StateType =
+    ReportModel
+    & { providers: { queries: QueryModel[], renderer: RendererModel[] }, recordSet?: any[], errors?: ReportModel };
+
+const FilterRowItemRenderer =  memo(function FilterRowItemRenderer(props: { queries?: QueryModel[], queryId?: string, recordSet?: any[], filter: ColumnFilterModel, setState: Dispatch<SetObserverAction<StateType>>, isEquals: boolean, isFreeText: boolean }) {
+    const {filter, setState, isFreeText, isEquals, queries, queryId, recordSet} = props;
+    return <Horizontal key={filter.id} mB={10}>
+        <Vertical w={100} style={{flexShrink: 0}}>
+            <Select onSelect={(value: 'and' | 'or') => {
+                setState(produce(draft => {
+                    const colIndex = draft.columnFilters.findIndex(f => f.id === filter.id);
+                    draft.columnFilters[colIndex].joinType = value
+                }));
+            }}>
+                <Select.Option value={'and'}>And</Select.Option>
+                <Select.Option value={'or'}>Or</Select.Option>
+            </Select>
+        </Vertical>
+        <Vertical mL={5} style={{width: 'calc((100% - 255px) / 2)', flexShrink: 0}}>
+            <Select onSelect={(value: string) => {
+                setState(produce((draft) => {
+                    const colIndex = draft.columnFilters.findIndex(f => f.id === filter.id);
+                    draft.columnFilters[colIndex].columnKey = value;
+                }));
+            }}>
+                {queries?.find(qry => qry.id === queryId)?.columns?.filter((col) => col.enabled)?.map(col => {
+                    return <Select.Option value={col.key} key={col.key}>{col.name}</Select.Option>
+                })}
+            </Select>
+        </Vertical>
+        <Vertical w={140} mL={5} style={{flexShrink: 0}}>
+            <Select onSelect={(value: any) => {
+                setState(produce(draft => {
+                    const colIndex = draft.columnFilters.findIndex(c => c.id === filter.id);
+                    draft.columnFilters[colIndex].filterCondition = value;
+                }))
+            }}>
+                <Select.Option value={'contains'}>Contains</Select.Option>
+                <Select.Option value={'startsWith'}>Starts With</Select.Option>
+                <Select.Option value={'endsWith'}>Ends With</Select.Option>
+                <Select.Option value={'equals'}>Equals</Select.Option>
+                <Select.Option value={'greaterThan'}>Greater Than</Select.Option>
+                <Select.Option value={'lessThan'}>Less Than</Select.Option>
+            </Select>
+        </Vertical>
+        <Vertical mL={5} style={{width: 'calc((100% - 255px) / 2)', flexShrink: 0}}>
+            {isEquals &&
+                <Select disabled={!filter.columnKey} showSearch={true} optionFilterProp="children"
+                        filterOption={(input, option) => (option!.children as unknown as string).includes(input)}
+                        filterSort={(optionA, optionB) => {
+                            try {
+                                return (optionA!.children as unknown as string)
+                                    .toLowerCase()
+                                    .localeCompare((optionB!.children as unknown as string).toLowerCase());
+                            } catch (err) {
+                                // we cant process this
+                            }
+                            return 0;
+                        }}>
+                    {recordSet?.reduce((set: Array<any>, data) => {
+                        const key = filter.columnKey;
+                        const val = data[key];
+                        if (set.indexOf(val) < 0) {
+                            set.push(val);
+                        }
+                        return set;
+                    }, []).map(val => {
+                        return <Select.Option key={val} value={val}>{val}</Select.Option>
+                    })}
+                </Select>
+            }
+            {isFreeText && <Input disabled={!filter.columnKey} onChange={(val) => {
+                setState(produce((draft) => {
+
+                    const filterIndex = original(draft)?.columnFilters.findIndex(col => col.id === filter?.id) || -1;
+                    if (filterIndex != -1) {
+                        draft.columnFilters[filterIndex].filterValue = val.target.value;
+                    }
+                }))
+            }}/>}
+        </Vertical>
+    </Horizontal>;
+});
+
 export default function ReportRoute() {
     const loaderData = useLoaderData<ReportModel & { providers: { queries: QueryModel[], renderer: RendererModel[] } }>();
     const [state, setState, {
         Form,
         ActionStateValue
-    }] = useRemixActionState<ReportModel & { providers: { queries: QueryModel[], renderer: RendererModel[] }, recordSet?: any[], errors?: ReportModel }>(loaderData);
+    }] = useRemixActionState<StateType>(loaderData);
     const errors = state?.errors;
     return <Vertical>
         <HeaderPanel title={'This is Report'}/>
@@ -86,78 +174,16 @@ export default function ReportRoute() {
                             Query</Button>
                     </Horizontal>
                     <Divider orientation={"left"} style={{fontSize: '1rem'}}>Filters</Divider>
-                    <ActionStateValue selector={state => state?.columnFilters} render={(columnFilter:any[]) => {
+                    <ActionStateValue selector={state => state?.columnFilters} render={(columnFilter: any[]) => {
                         return <>
                             {columnFilter.map((filter: ColumnFilterModel) => {
-                                return <Horizontal key={filter.id} mB={10} >
-                                    <Vertical w={100} style={{flexShrink: 0}}>
-                                        <Select value={filter.joinType} onSelect={(value: 'and' | 'or') => {
-                                            setState(oldVal => {
-                                                const newVal: ReportModel = JSON.parse(JSON.stringify(oldVal));
-                                                const columnFilter = newVal.columnFilters.find(f => f.id === filter.id);
-                                                invariant(columnFilter, 'Column filter must not null');
-                                                columnFilter.joinType = value;
-                                                return newVal as any;
-                                            });
-                                        }}>
-                                            <Select.Option value={'and'}>And</Select.Option>
-                                            <Select.Option value={'or'}>Or</Select.Option>
-                                        </Select>
-                                    </Vertical>
-                                    <Vertical w={'30%'} mL={5}>
-                                        <Select value={filter.columnKey} onSelect={(value: string) => {
-                                            setState((oldVal) => {
-                                                const newVal: ReportModel = JSON.parse(JSON.stringify(oldVal));
-                                                const column = newVal.columnFilters.find(f => f.id === filter.id);
-                                                invariant(column, 'Column must not be empty');
-                                                column.columnKey = value;
-                                                return newVal as any;
-                                            });
-                                        }}>
-                                            {state?.providers.queries.find(qry => qry.id === state?.queryId)?.columns?.filter((col) => col.enabled)?.map(col => {
-                                                return <Select.Option value={col.key} key={col.key}>{col.name}</Select.Option>
-                                            })}
-                                        </Select>
-                                    </Vertical>
-                                    <Vertical w={'30%'} mL={5}>
-                                        <Select value={filter.filterCondition} onSelect={(value: any) => {
-                                            setState(oldVal => {
-                                                const newVal: ReportModel = JSON.parse(JSON.stringify(oldVal));
-                                                const filterColumn = newVal.columnFilters.find(f => f.id === filter.id);
-                                                invariant(filterColumn, 'Filter column must not be empty');
-                                                filterColumn.filterCondition = value;
-                                                return newVal as any;
-                                            })
-                                        }}>
-                                            <Select.Option value={'contains'}>Contains</Select.Option>
-                                            <Select.Option value={'startsWith'}>Starts With</Select.Option>
-                                            <Select.Option value={'endsWith'}>Ends With</Select.Option>
-                                            <Select.Option value={'equals'}>Equals</Select.Option>
-                                            <Select.Option value={'greaterThan'}>Greater Than</Select.Option>
-                                            <Select.Option value={'lessThan'}>Less Than</Select.Option>
-                                        </Select>
-                                    </Vertical>
-                                    <Vertical w={'30%'} mL={5}>
-                                        <Select showSearch={true} optionFilterProp="children" filterOption={(input, option) => (option!.children as unknown as string).includes(input)}
-                                                filterSort={(optionA, optionB) =>
-                                                    (optionA!.children as unknown as string)
-                                                        .toLowerCase()
-                                                        .localeCompare((optionB!.children as unknown as string).toLowerCase())
-                                                }>
-                                            {state?.recordSet?.reduce((set: Array<any>, data) => {
-                                                const key = filter.columnKey;
-                                                const val = data[key];
-                                                if (set.indexOf(val) < 0) {
-                                                    set.push(val);
-                                                }
-                                                return set;
-                                            }, []).map(val => {
-                                                return <Select.Option key={val} value={val}>{val}</Select.Option>
-                                            })}
-
-                                        </Select>
-                                    </Vertical>
-                                </Horizontal>
+                                const isEquals = filter.filterCondition === 'equals';
+                                const isFreeText = !isEquals;
+                                return <FilterRowItemRenderer queries={state?.providers.queries}
+                                                              queryId={state?.queryId}
+                                                              recordSet={state?.recordSet}
+                                                              filter={filter} setState={setState} isEquals={isEquals}
+                                                              isFreeText={isFreeText} key={filter.id}/>
                             })}
                         </>
                     }}/>
@@ -183,7 +209,7 @@ export default function ReportRoute() {
                         return {
                             title: col.name,
                             dataIndex: col.key,
-                            key : col.key
+                            key: col.key
                         }
                     })} dataSource={state?.recordSet}/>
                 </PlainWhitePanel>

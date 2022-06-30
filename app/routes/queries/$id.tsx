@@ -5,7 +5,7 @@ import {json, redirect} from "@remix-run/node";
 import {loadDb, persistDb} from "~/db/db.server";
 import type {QueryModel, RendererModel} from "~/db/DbModel";
 import {useLoaderData} from "@remix-run/react";
-import {actionStateFunction, useRemixActionState, useRemixActionStateInForm} from "remix-hook-actionstate";
+import {actionStateFunction, useRemixActionState, useRemixActionStateInForm} from "~/remix-hook-actionstate";
 import {PlainWhitePanel} from "~/components/PlainWhitePanel";
 import Label from "~/components/Label";
 import {Button, Checkbox, Divider, Input, Select, Table, Tooltip} from "antd";
@@ -15,6 +15,7 @@ import invariant from "tiny-invariant";
 import type { QueryResult} from "~/db/esnaad.server";
 import {query} from "~/db/esnaad.server";
 import {validateErrors} from "~/routes/queries/validateErrors";
+import produce from "immer";
 
 export const loader: LoaderFunction = async ({params}) => {
     const id = params.id;
@@ -33,13 +34,10 @@ function EnabledCellRenderer(props: { record: any, value: any }) {
     return <Vertical hAlign={'center'}>
         <Checkbox checked={useActionStateValue(val => val?.columns?.find(col => col.key === props.record.key)?.enabled)}
                   onChange={e => {
-                      setState(oldVal => {
-                          const newVal: QueryModel = JSON.parse(JSON.stringify(oldVal));
-                          const column = newVal.columns.find(col => col.key === props.record.key);
-                          invariant(column, 'Column is a must');
-                          column.enabled = e.target.checked;
-                          return newVal;
-                      })
+                      setState(produce(draft => {
+                          const colIndex = draft.columns.findIndex(col => col.key === props.record.key);
+                          draft.columns[colIndex].enabled = e.target.checked;
+                      }))
                   }}/>
     </Vertical>;
 }
@@ -53,13 +51,10 @@ function NameColumnRenderer(props: { record: any, value: any }) {
             <Input status={error ? 'error' : ''} disabled={!isEnabled}
                    value={useActionStateValue(val => val?.columns.find(col => col.key === props.record.key)?.name)}
                    onChange={(e) => {
-                       setState(oldVal => {
-                           const newVal: QueryModel = JSON.parse(JSON.stringify(oldVal));
-                           const column = newVal.columns.find(col => col.key === props.record.key);
-                           invariant(column, 'Column cannot be null');
-                           column.name = e.target.value;
-                           return newVal;
-                       })
+                       setState(produce(draft => {
+                           const columnIndex = draft.columns.findIndex(col => col.key === props.record.key);
+                           draft.columns[columnIndex].name = e.target.value;
+                       }))
                    }}
             />
         </Tooltip>
@@ -75,13 +70,10 @@ function RendererColumnRenderer(props: { record: any, value: any }) {
             <Select status={error ? 'error' : ''} disabled={!isEnabled}
                     value={useActionStateValue(val => val?.columns.find(col => col.key === props.record.key)?.rendererId)}
                     onSelect={(value: string) => {
-                        setState((oldVal) => {
-                            const newVal: QueryModel & { renderers: RendererModel[] } = JSON.parse(JSON.stringify(oldVal));
-                            const column = newVal.columns.find(col => col.key === props.record.key);
-                            invariant(column, 'Column is important');
-                            column.rendererId = value;
-                            return newVal;
-                        })
+                        setState(produce((draft) => {
+                            const columnIndex = draft.columns.findIndex(col => col.key === props.record.key);
+                            draft.columns[columnIndex].rendererId = value;
+                        }))
                     }}
             >
                 {state.renderers.map(renderer => {
@@ -93,7 +85,7 @@ function RendererColumnRenderer(props: { record: any, value: any }) {
 }
 
 // eslint-disable-next-line
-export default function QueriesRoute() {
+function QueriesRoute(){
     const query = useLoaderData<QueryModel>();
     const [state, setState, {
         Form,
@@ -195,8 +187,6 @@ export default function QueriesRoute() {
         </Form>
     </Vertical>
 }
-
-
 
 export const action: ActionFunction = async ({request}) => {
     const formData = await request.formData();
