@@ -1,7 +1,7 @@
 import {Horizontal, Vertical} from "react-hook-components";
 import {HeaderPanel} from "~/components/HeaderPanel";
 import type {ActionFunction, LoaderFunction} from "@remix-run/node";
-import {json} from "@remix-run/node";
+import {json, redirect} from "@remix-run/node";
 import {loadDb, persistDb} from "~/db/db.server";
 import type {QueryModel, RendererModel} from "~/db/DbModel";
 import {useLoaderData} from "@remix-run/react";
@@ -12,6 +12,9 @@ import {Button, Checkbox, Divider, Input, Select, Table, Tooltip} from "antd";
 import {useEffect} from "react";
 import TextArea from "antd/lib/input/TextArea";
 import invariant from "tiny-invariant";
+import type { QueryResult} from "~/db/esnaad.server";
+import {query} from "~/db/esnaad.server";
+import {validateErrors} from "~/routes/queries/validateErrors";
 
 export const loader: LoaderFunction = async ({params}) => {
     const id = params.id;
@@ -25,6 +28,8 @@ export const loader: LoaderFunction = async ({params}) => {
 
 function EnabledCellRenderer(props: { record: any, value: any }) {
     const [, setState, {useActionStateValue}] = useRemixActionStateInForm<QueryModel>();
+
+
     return <Vertical hAlign={'center'}>
         <Checkbox checked={useActionStateValue(val => val?.columns?.find(col => col.key === props.record.key)?.enabled)}
                   onChange={e => {
@@ -40,44 +45,54 @@ function EnabledCellRenderer(props: { record: any, value: any }) {
 }
 
 function NameColumnRenderer(props: { record: any, value: any }) {
-    const [, setState, {useActionStateValue}] = useRemixActionStateInForm<QueryModel>();
+    const [, setState, {useActionStateValue}] = useRemixActionStateInForm<QueryModel & { errors?: QueryModel }>();
+    const isEnabled = useActionStateValue(val => val?.columns.find(col => col.key === props.record.key)?.enabled);
+    const error = useActionStateValue(val => val?.errors?.columns?.find(col => col.key === props.record.key)?.name);
     return <Vertical>
-        <Input value={useActionStateValue(val => val?.columns.find(col => col.key === props.record.key)?.name)}
-               onChange={(e) => {
-                   setState(oldVal => {
-                       const newVal: QueryModel = JSON.parse(JSON.stringify(oldVal));
-                       const column = newVal.columns.find(col => col.key === props.record.key);
-                       invariant(column, 'Column cannot be null');
-                       column.name = e.target.value;
-                       return newVal;
-                   })
-               }}
-        />
-    </Vertical>;
+        <Tooltip title={error}>
+            <Input status={error ? 'error' : ''} disabled={!isEnabled}
+                   value={useActionStateValue(val => val?.columns.find(col => col.key === props.record.key)?.name)}
+                   onChange={(e) => {
+                       setState(oldVal => {
+                           const newVal: QueryModel = JSON.parse(JSON.stringify(oldVal));
+                           const column = newVal.columns.find(col => col.key === props.record.key);
+                           invariant(column, 'Column cannot be null');
+                           column.name = e.target.value;
+                           return newVal;
+                       })
+                   }}
+            />
+        </Tooltip>
+    </Vertical>
 }
 
 function RendererColumnRenderer(props: { record: any, value: any }) {
-    const [state, setState, {useActionStateValue}] = useRemixActionStateInForm<QueryModel & { renderers: RendererModel[] }>();
-
+    const [state, setState, {useActionStateValue}] = useRemixActionStateInForm<QueryModel & { renderers: RendererModel[], errors?: QueryModel }>();
+    const isEnabled = useActionStateValue(val => val?.columns.find(col => col.key === props.record.key)?.enabled);
+    const error = useActionStateValue(val => val?.errors?.columns?.find(col => col.key === props.record.key)?.rendererId);
     return <Vertical>
-        <Select value={useActionStateValue(val => val?.columns.find(col => col.key === props.record.key)?.rendererId)}
-                onSelect={(value: string) => {
-                    setState((oldVal) => {
-                        const newVal: QueryModel & { renderers: RendererModel[] } = JSON.parse(JSON.stringify(oldVal));
-                        const column = newVal.columns.find(col => col.key === props.record.key);
-                        invariant(column, 'Column is important');
-                        column.rendererId = value;
-                        return newVal;
-                    })
-                }}
-        >
-            {state.renderers.map(renderer => {
-                return <Select.Option value={renderer.id} key={renderer.id}>{renderer.name}</Select.Option>
-            })}
-        </Select>
-    </Vertical>;
+        <Tooltip title={error}>
+            <Select status={error ? 'error' : ''} disabled={!isEnabled}
+                    value={useActionStateValue(val => val?.columns.find(col => col.key === props.record.key)?.rendererId)}
+                    onSelect={(value: string) => {
+                        setState((oldVal) => {
+                            const newVal: QueryModel & { renderers: RendererModel[] } = JSON.parse(JSON.stringify(oldVal));
+                            const column = newVal.columns.find(col => col.key === props.record.key);
+                            invariant(column, 'Column is important');
+                            column.rendererId = value;
+                            return newVal;
+                        })
+                    }}
+            >
+                {state.renderers.map(renderer => {
+                    return <Select.Option value={renderer.id} key={renderer.id}>{renderer.name}</Select.Option>
+                })}
+            </Select>
+        </Tooltip>
+    </Vertical>
 }
 
+// eslint-disable-next-line
 export default function QueriesRoute() {
     const query = useLoaderData<QueryModel>();
     const [state, setState, {
@@ -92,8 +107,9 @@ export default function QueriesRoute() {
     }, [id]);
 
     const errors = state?.errors;
+
     return <Vertical>
-        <HeaderPanel title={query.name}/>
+        <HeaderPanel title={state?.name || ''}/>
         <Form method={'post'}>
             <Vertical p={20}>
                 <PlainWhitePanel>
@@ -110,16 +126,14 @@ export default function QueriesRoute() {
                         </Tooltip>
                     </Label>
                     <Label label={'Description'} vAlign={'top'}>
-                        <Tooltip title={errors?.description}>
-                            <TextArea status={errors?.description ? 'error' : ''}
-                                      value={useActionStateValue(state => state?.description)}
-                                      onChange={(event) => {
-                                          setState(oldVal => {
-                                              return {...oldVal, description: event.target.value}
-                                          });
-                                      }}
-                            />
-                        </Tooltip>
+                        <TextArea
+                            value={useActionStateValue(state => state?.description)}
+                            onChange={(event) => {
+                                setState(oldVal => {
+                                    return {...oldVal, description: event.target.value}
+                                });
+                            }}
+                        />
                     </Label>
                     <Label label={'SQL Query'} vAlign={'top'}>
                         <Tooltip title={errors?.sqlQuery}>
@@ -172,6 +186,8 @@ export default function QueriesRoute() {
                         }
                     ]} dataSource={state?.columns}/>
                     <Horizontal hAlign={'right'}>
+                        <Button type={'link'} htmlType={'submit'} style={{marginRight: 5}} name={'intent'}
+                                value={'delete'}>Delete</Button>
                         <Button type={'primary'} htmlType={'submit'} name={'intent'} value={'save'}>Save</Button>
                     </Horizontal>
                 </PlainWhitePanel>
@@ -180,11 +196,56 @@ export default function QueriesRoute() {
     </Vertical>
 }
 
+
+
 export const action: ActionFunction = async ({request}) => {
     const formData = await request.formData();
     const state = await actionStateFunction<QueryModel>({formData});
+    invariant(state, 'State must have value');
     const intent = formData.get('intent');
+    if (intent === 'runQuery') {
+        const errors = validateErrors(state);
+        const hasErrors = Object.entries(errors).some(([, value]) => {
+            if (Array.isArray(value)) {
+                return value.length > 0
+            }
+            return value;
+        });
+        if (hasErrors) {
+            return json({...state, errors});
+        }
+        try {
+            const result: QueryResult = await query(state?.sqlQuery);
+            state.columns = result.columns.map(col => {
+                const existingItem = state?.columns?.find(map => map.key === col.key);
+                if (existingItem) {
+                    return existingItem;
+                }
+                return {
+                    enabled: false,
+                    name: '',
+                    key: col.key,
+                    type: col.type,
+                    rendererId: ''
+                }
+            })
+            return json({...state, errors: {}});
+        } catch (err: any) {
+            errors.sqlQuery = err.message;
+            return json({...state, errors});
+        }
+    }
     if (intent === 'save') {
+        const errors = validateErrors(state);
+        const hasErrors = Object.entries(errors).some(([, value]) => {
+            if (Array.isArray(value)) {
+                return value.length > 0
+            }
+            return value;
+        });
+        if (hasErrors) {
+            return json({...state, errors});
+        }
         const db = await loadDb();
         const query = db.queries?.find(q => q.id === state?.id);
         invariant(query, 'Query object must not null');
@@ -194,7 +255,13 @@ export const action: ActionFunction = async ({request}) => {
         query.sqlQuery = state?.sqlQuery;
         query.columns = state?.columns
         await persistDb();
-        return json(state);
+        return json({...state,errors:{}});
+    }
+    if (intent === 'delete') {
+        const db = await loadDb();
+        db.queries = db.queries?.filter(q => q.id !== state?.id);
+        await persistDb();
+        return redirect('/queries/new')
     }
     const errors = {};
     return json({...state, errors});

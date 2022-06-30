@@ -1,5 +1,5 @@
 import {Horizontal, Vertical} from "react-hook-components";
-import {Button, Checkbox, Divider, Input, Select, Table} from "antd";
+import {Button, Checkbox, Divider, Input, Select, Table, Tooltip} from "antd";
 import TextArea from "antd/lib/input/TextArea";
 import type {ActionFunction, LoaderFunction} from "@remix-run/node";
 import {json, redirect} from "@remix-run/node";
@@ -16,10 +16,13 @@ import type {ColumnModel, QueryModel, RendererModel} from "~/db/DbModel";
 import {loadDb, persistDb} from "~/db/db.server";
 import {useLoaderData} from "@remix-run/react";
 import {v4} from "uuid";
+import {validateErrors} from "~/routes/queries/validateErrors";
+
+
 
 export const action: ActionFunction = async ({request}) => {
     const formData = await request.formData();
-    const actionState: QueryModel = await actionStateFunction<QueryModel>({formData}) || {
+    const state: QueryModel = await actionStateFunction<QueryModel>({formData}) || {
         columns: [],
         sqlQuery: '',
         id: '',
@@ -29,36 +32,65 @@ export const action: ActionFunction = async ({request}) => {
 
     const intent = formData.get('intent');
     if (intent === 'save') {
+        const errors = validateErrors(state);
+        const hasErrors = Object.entries(errors).some(([, value]) => {
+            if (Array.isArray(value)) {
+                console.log('We have array value ',value);
+                return value.length > 0
+            }
+            console.log('We have error value ',value);
+            return value;
+        });
+        if (hasErrors) {
+            return json({...state, errors});
+        }
         const db = await loadDb();
         db.queries = db.queries || [];
 
         const data: QueryModel = {
             id: v4(),
-            columns: actionState.columns,
-            sqlQuery: actionState.sqlQuery,
-            name: actionState.name,
-            description: actionState.description
+            columns: state.columns,
+            sqlQuery: state.sqlQuery,
+            name: state.name,
+            description: state.description
         }
         db.queries?.push(data);
         await persistDb();
         return redirect('/queries/' + data.id);
     }
     if (intent === 'runQuery') {
-        const result: QueryResult = await query('select * from ADM_MST_AIR_BASES');
-        actionState.columns = result.columns.map(col => {
-            const existingItem = actionState?.columns?.find(map => map.key === col.key);
-            if (existingItem) {
-                return existingItem;
+        const errors = validateErrors(state);
+        const hasErrors = Object.entries(errors).some(([, value]) => {
+            if (Array.isArray(value)) {
+                return value.length > 0
             }
-            return {
-                enabled: false,
-                name: '',
-                key: col.key,
-                type: col.type,
-                rendererId: ''
-            }
-        })
-        return json(actionState)
+            return value;
+        });
+        if (hasErrors) {
+            return json({...state, errors});
+        }
+        try {
+            const result: QueryResult = await query(state?.sqlQuery);
+            state.columns = result.columns.map(col => {
+                const existingItem = state?.columns?.find(map => map.key === col.key);
+                if (existingItem) {
+                    return existingItem;
+                }
+                return {
+                    enabled: false,
+                    name: '',
+                    key: col.key,
+                    type: col.type,
+                    rendererId: ''
+                }
+            })
+            return json({...state, errors: {}});
+        } catch (err: any) {
+            errors.sqlQuery = err.message;
+            return json({...state, errors});
+        }
+
+
     }
 }
 
@@ -103,7 +135,8 @@ export const loader: LoaderFunction = async () => {
 export default function NewRoute() {
     const renderers = useLoaderData<Array<RendererModel>>();
 
-    const [state, setState, {Form}] = useRemixActionState<QueryModel & { renderers?: Array<RendererModel> }>({
+    const [state, setState, {Form}] = useRemixActionState<QueryModel & { renderers?: RendererModel[], errors?: QueryModel }>({
+        errors: undefined,
         renderers,
         columns: [],
         id: '',
@@ -111,7 +144,7 @@ export default function NewRoute() {
         name: '',
         description: ''
     });
-
+    const errors = state?.errors;
     return <Vertical h={'100%'} overflow={'auto'}>
         <HeaderPanel title={'New Query'}/>
         <Vertical p={20}>
@@ -119,11 +152,13 @@ export default function NewRoute() {
                 <PlainWhitePanel>
                     <LabelWidth width={LABEL_WIDTH}>
                         <Label label={'Name'}>
-                            <Input style={{width: '100%'}} defaultValue={state?.name} onChange={(e) => {
-                                setState((val: QueryModel) => {
-                                    return {...val, name: e.target.value}
-                                })
-                            }}/>
+                            <Tooltip title={errors?.name}>
+                                <Input style={{width: '100%'}} defaultValue={state?.name} onChange={(e) => {
+                                    setState((val: QueryModel) => {
+                                        return {...val, name: e.target.value}
+                                    })
+                                }} status={errors?.name ? 'error' : ''}/>
+                            </Tooltip>
                         </Label>
                         <Label label={'Description'} vAlign={'top'}>
                             <TextArea style={{width: '100%'}} onChange={(e) => {
@@ -133,11 +168,13 @@ export default function NewRoute() {
                             }} defaultValue={state?.description}/>
                         </Label>
                         <Label label={'SQL Query'} vAlign={'top'}>
-                            <TextArea style={{width: '100%', height: 200}} onChange={(e) => {
-                                setState((val: QueryModel) => {
-                                    return {...val, sqlQuery: e.target.value}
-                                })
-                            }} defaultValue={state?.sqlQuery}/>
+                            <Tooltip title={errors?.sqlQuery}>
+                                <TextArea style={{width: '100%', height: 200}} onChange={(e) => {
+                                    setState((val: QueryModel) => {
+                                        return {...val, sqlQuery: e.target.value}
+                                    })
+                                }} defaultValue={state?.sqlQuery} status={errors?.sqlQuery ? 'error' : ''}/>
+                            </Tooltip>
                         </Label>
                     </LabelWidth>
                     <Horizontal hAlign={'right'}>
@@ -149,13 +186,13 @@ export default function NewRoute() {
                     <Horizontal vAlign={'center'}>
                         <Divider orientation={"left"}>Column Mapping</Divider>
                     </Horizontal>
+
                     <Table size={'small'} columns={columns} dataSource={state?.columns}/>
+
                     <Horizontal hAlign={'right'} mT={10}>
                         <Button type={"primary"} htmlType={"submit"} name={'intent'}
                                 value={'save'}>Save</Button>
                     </Horizontal>
-
-
                 </PlainWhitePanel>
 
 
@@ -167,9 +204,12 @@ export default function NewRoute() {
 
 
 function NameColumnRenderer(props: { value: any, record: ColumnModel }) {
-    const [, setState, {useActionStateValue}] = useRemixActionStateInForm<QueryModel>();
+    const [, setState, {useActionStateValue}] = useRemixActionStateInForm<QueryModel & {errors?:QueryModel}>();
+    const isEnabled = useActionStateValue(val => val?.columns.find(c => c.key === props.record.key)?.enabled);
+    const error = useActionStateValue(val => val?.errors?.columns?.find(c => c.key === props.record.key)?.name);
     return <Vertical>
-        <Input value={useActionStateValue(val => val?.columns.find(c => c.key === props.record.key)?.name)}
+        <Tooltip title={error}>
+        <Input status={error ? 'error' : ''} value={useActionStateValue(val => val?.columns.find(c => c.key === props.record.key)?.name)}
                onChange={(event) => {
                    setState((val: QueryModel) => {
                        const newVal: QueryModel = JSON.parse(JSON.stringify(val));
@@ -178,7 +218,8 @@ function NameColumnRenderer(props: { value: any, record: ColumnModel }) {
                        newRecord.name = event.target.value;
                        return newVal;
                    });
-               }}/>
+               }} disabled={!isEnabled}/>
+        </Tooltip>
     </Vertical>
 }
 
@@ -200,21 +241,26 @@ function EnableColumnRenderer(props: { value: any, record: ColumnModel }) {
 }
 
 function RendererColumnRenderer(props: { value: any, record: ColumnModel }) {
-    const [state, setState, {useActionStateValue}] = useRemixActionStateInForm<QueryModel & { renderers: Array<RendererModel> }>();
+    const [state, setState, {useActionStateValue}] = useRemixActionStateInForm<QueryModel & { renderers: Array<RendererModel>, errors?: QueryModel }>();
+    const isEnabled = useActionStateValue(val => val?.columns.find(c => c.key === props.record.key)?.enabled);
+    const error = useActionStateValue(val => val?.errors?.columns?.find(c => c.key === props.record.key)?.rendererId);
     return <Vertical>
-        <Select value={useActionStateValue(val => val?.columns.find(c => c.key === props.record.key)?.rendererId)}
-                onSelect={(onSelectedValue: any) => {
-                    setState((value) => {
-                        const newVal: QueryModel & { renderers: RendererModel[] } = JSON.parse(JSON.stringify(value));
-                        const column = newVal.columns.find(col => col.key === props.record.key);
-                        invariant(column, 'Column object must not be undefined');
-                        column.rendererId = onSelectedValue;
-                        return {...newVal};
-                    });
-                }}>
-            {state.renderers.map(renderer => {
-                return <Select.Option value={renderer.id} key={renderer.id}>{renderer.name}</Select.Option>
-            })}
-        </Select>
+        <Tooltip title={error}>
+            <Select status={error ? 'error' : ''} disabled={!isEnabled}
+                    value={useActionStateValue(val => val?.columns.find(c => c.key === props.record.key)?.rendererId)}
+                    onSelect={(onSelectedValue: any) => {
+                        setState((value) => {
+                            const newVal: QueryModel & { renderers: RendererModel[] } = JSON.parse(JSON.stringify(value));
+                            const column = newVal.columns.find(col => col.key === props.record.key);
+                            invariant(column, 'Column object must not be undefined');
+                            column.rendererId = onSelectedValue;
+                            return {...newVal};
+                        });
+                    }}>
+                {state.renderers.map(renderer => {
+                    return <Select.Option value={renderer.id} key={renderer.id}>{renderer.name}</Select.Option>
+                })}
+            </Select>
+        </Tooltip>
     </Vertical>
 }
