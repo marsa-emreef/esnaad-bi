@@ -20,7 +20,7 @@ export const loader: LoaderFunction = async ({params}) => {
     return json(db.renderer?.find(r => r.id === id));
 }
 
-function UpdateRendererRoute(){
+export default function UpdateRendererRoute(){
     const renderer = useLoaderData<RendererModel>();
     const id = renderer.id;
     const [state, setState, {
@@ -37,7 +37,6 @@ function UpdateRendererRoute(){
         <Vertical p={20}>
             <Form method={'post'}>
                 <PlainWhitePanel>
-
                     <LabelWidth width={120}>
                         <Label label={'Name'}>
                             <Tooltip title={state?.errors?.name}>

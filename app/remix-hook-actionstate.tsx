@@ -46,10 +46,14 @@ export async function actionStateFunction<T>({formData}: { formData: FormData })
  */
 export type UseActionStateListener<T> = (selector: (param?: (T)) => any, listener: (newVal: any, oldVal: any) => void) => void
 
+type RenderFC = (value: any) => React.ReactElement;
+
 /**
  * Component type for getting the action state value
  */
-export type ActionStateValueFC<T> = React.FC<{ selector: (param?: T) => any, render: (value: any) => React.ReactElement }>
+export type ActionStateValueFC<T> = React.FC<{selector: (param?: T) => any, render: RenderFC}>
+
+
 
 /**
  * Hook type for getting the action state value
@@ -146,7 +150,7 @@ export function useRemixActionState<T>(initValue?: (T | (() => T))): [T | undefi
             return value;
         }
 
-        function ActionStateValue<T>(props: React.PropsWithChildren<{ selector: (param: T | undefined) => any, render: (value: any) => React.ReactElement }>) {
+        function ActionStateValue<T>(props: React.PropsWithChildren<{ selector: (param: T | undefined) => any, render: RenderFC }>) {
             const value = useActionStateValue(props.selector);
             return props.render(value);
         }

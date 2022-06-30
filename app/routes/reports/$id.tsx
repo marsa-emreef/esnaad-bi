@@ -134,14 +134,17 @@ export default function ReportRoute() {
             <Form method={'post'}>
                 <PlainWhitePanel>
                     <Label label={'Name'}>
-                        <Tooltip title={errors?.name}>
-                            <Input status={errors?.name ? 'error' : ''} defaultValue={state?.name}
-                                   onChange={(event) => {
-                                       setState(oldVal => {
-                                           return {...oldVal, name: event.target.value}
-                                       })
-                                   }}/>
-                        </Tooltip>
+                        <ActionStateValue selector={state => state?.name} render={(value) => {
+                            return <Tooltip title={errors?.name}>
+                                <Input status={errors?.name ? 'error' : ''} value={value}
+                                       onChange={(event) => {
+                                           setState(oldVal => {
+                                               return {...oldVal, name: event.target.value}
+                                           })
+                                       }}/>
+                            </Tooltip>
+                        }}/>
+
                     </Label>
                     <Label label={'Description'}>
                         <ActionStateValue selector={val => val?.description} render={(value) => {
@@ -156,7 +159,6 @@ export default function ReportRoute() {
                         <ActionStateValue selector={val => val?.queryId} render={(value) => {
                             return <Tooltip title={errors?.queryId}>
                                 <Select status={errors?.queryId ? 'error' : ''}
-
                                         value={value} onSelect={(value: string) => {
                                     setState(oldVal => {
                                         return {...oldVal, queryId: value}

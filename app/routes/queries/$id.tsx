@@ -12,7 +12,7 @@ import {Button, Checkbox, Divider, Input, Select, Table, Tooltip} from "antd";
 import {useEffect} from "react";
 import TextArea from "antd/lib/input/TextArea";
 import invariant from "tiny-invariant";
-import type { QueryResult} from "~/db/esnaad.server";
+import type {QueryResult} from "~/db/esnaad.server";
 import {query} from "~/db/esnaad.server";
 import {validateErrors} from "~/routes/queries/validateErrors";
 import produce from "immer";
@@ -85,7 +85,7 @@ function RendererColumnRenderer(props: { record: any, value: any }) {
 }
 
 // eslint-disable-next-line
-function QueriesRoute(){
+export default function QueriesRoute() {
     const query = useLoaderData<QueryModel>();
     const [state, setState, {
         Form,
@@ -245,7 +245,7 @@ export const action: ActionFunction = async ({request}) => {
         query.sqlQuery = state?.sqlQuery;
         query.columns = state?.columns
         await persistDb();
-        return json({...state,errors:{}});
+        return json({...state, errors: {}});
     }
     if (intent === 'delete') {
         const db = await loadDb();
