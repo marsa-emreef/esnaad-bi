@@ -51,7 +51,13 @@ export default function AppShell() {
                             {
                                 label: <Link to={'/reports/new'}>Reports</Link>,
                                 key:'report',
-                                icon : <MdOutlineTableView/>
+                                icon : <MdOutlineTableView/>,
+                                children: db.reports?.map(report => {
+                                    return {
+                                        label: <Link to={'/reports/' + report.id}>{report.name}</Link>,
+                                        key: report.id,
+                                    }
+                                })
                             },
                             {
                                 label: <Link to={'/queries/new'}>Queries</Link>,

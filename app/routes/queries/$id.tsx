@@ -194,16 +194,11 @@ export const action: ActionFunction = async ({request}) => {
     invariant(state, 'State must have value');
     const intent = formData.get('intent');
     if (intent === 'runQuery') {
-        const errors = validateErrors(state);
-        const hasErrors = Object.entries(errors).some(([, value]) => {
-            if (Array.isArray(value)) {
-                return value.length > 0
-            }
-            return value;
-        });
+        const {errors,hasErrors} = validateErrors(state);
         if (hasErrors) {
             return json({...state, errors});
         }
+
         try {
             const result: QueryResult = await query(state?.sqlQuery);
             state.columns = result.columns.map(col => {
@@ -226,13 +221,8 @@ export const action: ActionFunction = async ({request}) => {
         }
     }
     if (intent === 'save') {
-        const errors = validateErrors(state);
-        const hasErrors = Object.entries(errors).some(([, value]) => {
-            if (Array.isArray(value)) {
-                return value.length > 0
-            }
-            return value;
-        });
+        const {errors,hasErrors} = validateErrors(state);
+
         if (hasErrors) {
             return json({...state, errors});
         }

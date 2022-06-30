@@ -7,14 +7,14 @@ import Label from "~/components/Label";
 import {Button, Divider, Input, Select, Table, Tooltip} from "antd";
 import type {ColumnFilterModel, QueryModel, RendererModel, ReportModel} from "~/db/DbModel";
 import type {ActionFunction, LoaderFunction} from "@remix-run/node";
-import {json} from "@remix-run/node";
-import {loadDb} from "~/db/db.server";
+import {json, redirect} from "@remix-run/node";
+import {loadDb, persistDb} from "~/db/db.server";
 import {useLoaderData} from "@remix-run/react";
 import {v4} from "uuid";
 import invariant from "tiny-invariant";
 import {query} from "~/db/esnaad.server";
 import type {Dispatch, SetObserverAction} from "react-hook-useobserver";
-import produce, {original} from "immer";
+import produce from "immer";
 
 export const loader: LoaderFunction = async () => {
     const db = await loadDb();
@@ -41,11 +41,11 @@ type StateType =
     ReportModel
     & { providers: { queries: QueryModel[], renderer: RendererModel[] }, recordSet?: any[], errors?: ReportModel };
 
-const FilterRowItemRenderer =  memo(function FilterRowItemRenderer(props: { queries?: QueryModel[], queryId?: string, recordSet?: any[], filter: ColumnFilterModel, setState: Dispatch<SetObserverAction<StateType>>, isEquals: boolean, isFreeText: boolean }) {
+const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queries?: QueryModel[], queryId?: string, recordSet?: any[], filter: ColumnFilterModel, setState: Dispatch<SetObserverAction<StateType>>, isEquals: boolean, isFreeText: boolean }) {
     const {filter, setState, isFreeText, isEquals, queries, queryId, recordSet} = props;
     return <Horizontal key={filter.id} mB={10}>
         <Vertical w={100} style={{flexShrink: 0}}>
-            <Select onSelect={(value: 'and' | 'or') => {
+            <Select value={filter.joinType} onSelect={(value: 'and' | 'or') => {
                 setState(produce(draft => {
                     const colIndex = draft.columnFilters.findIndex(f => f.id === filter.id);
                     draft.columnFilters[colIndex].joinType = value
@@ -56,7 +56,7 @@ const FilterRowItemRenderer =  memo(function FilterRowItemRenderer(props: { quer
             </Select>
         </Vertical>
         <Vertical mL={5} style={{width: 'calc((100% - 255px) / 2)', flexShrink: 0}}>
-            <Select onSelect={(value: string) => {
+            <Select value={filter.columnKey} onSelect={(value: string) => {
                 setState(produce((draft) => {
                     const colIndex = draft.columnFilters.findIndex(f => f.id === filter.id);
                     draft.columnFilters[colIndex].columnKey = value;
@@ -68,7 +68,7 @@ const FilterRowItemRenderer =  memo(function FilterRowItemRenderer(props: { quer
             </Select>
         </Vertical>
         <Vertical w={140} mL={5} style={{flexShrink: 0}}>
-            <Select onSelect={(value: any) => {
+            <Select value={filter.filterCondition} onSelect={(value: any) => {
                 setState(produce(draft => {
                     const colIndex = draft.columnFilters.findIndex(c => c.id === filter.id);
                     draft.columnFilters[colIndex].filterCondition = value;
@@ -84,8 +84,15 @@ const FilterRowItemRenderer =  memo(function FilterRowItemRenderer(props: { quer
         </Vertical>
         <Vertical mL={5} style={{width: 'calc((100% - 255px) / 2)', flexShrink: 0}}>
             {isEquals &&
-                <Select disabled={!filter.columnKey} showSearch={true} optionFilterProp="children"
+                <Select value={filter.filterValue} disabled={!filter.columnKey} showSearch={true}
+                        optionFilterProp="children"
                         filterOption={(input, option) => (option!.children as unknown as string).includes(input)}
+                        onSelect={(value: string) => {
+                            setState(produce(draft => {
+                                const colIndex = draft.columnFilters.findIndex(f => f.id === filter.id);
+                                draft.columnFilters[colIndex].filterValue = value;
+                            }));
+                        }}
                         filterSort={(optionA, optionB) => {
                             try {
                                 return (optionA!.children as unknown as string)
@@ -108,13 +115,10 @@ const FilterRowItemRenderer =  memo(function FilterRowItemRenderer(props: { quer
                     })}
                 </Select>
             }
-            {isFreeText && <Input disabled={!filter.columnKey} onChange={(val) => {
+            {isFreeText && <Input value={filter.filterValue} disabled={!filter.columnKey} onChange={(val) => {
                 setState(produce((draft) => {
-
-                    const filterIndex = original(draft)?.columnFilters.findIndex(col => col.id === filter?.id) || -1;
-                    if (filterIndex != -1) {
-                        draft.columnFilters[filterIndex].filterValue = val.target.value;
-                    }
+                    const filterIndex = draft.columnFilters.findIndex(col => col.id === filter?.id);
+                    draft.columnFilters[filterIndex].filterValue = val.target.value;
                 }))
             }}/>}
         </Vertical>
@@ -207,17 +211,67 @@ export default function ReportRoute() {
                         }}>Add Filter</Button>
                     </Horizontal>
                     <Divider orientation={"left"}>Data</Divider>
-                    <Table columns={state?.columns?.map(col => {
+                    <Table scroll={{x: true, scrollToFirstRowOnChange: true}} columns={state?.columns?.map(col => {
                         return {
                             title: col.name,
                             dataIndex: col.key,
                             key: col.key
                         }
                     })} dataSource={state?.recordSet}/>
+                    <Horizontal mT={10} hAlign={'right'}>
+                        <Button htmlType={'submit'} type={"primary"} name={'intent'} value={'save'}>Save</Button>
+                    </Horizontal>
                 </PlainWhitePanel>
             </Form>
         </Vertical>
     </Vertical>
+}
+
+function validateErrors(state: ReportModel) {
+    const errors: ReportModel = {
+        id: '',
+        name: '',
+        queryId: '',
+        columns: [],
+        columnFilters: [],
+        securityCode: [],
+        description: ''
+    };
+    if (!state.name) {
+        errors.name = 'Name must not null';
+    }
+    if (!state.queryId) {
+        errors.queryId = 'Query Id must not null'
+    }
+
+    state.columnFilters.forEach(c => {
+        const error: any & ColumnFilterModel = {};
+        if (!c.filterCondition) {
+            error.filterCondition = 'Filter condition required';
+        }
+        if (!c.filterValue) {
+            error.filterValue = 'Filter value required';
+        }
+        if (!c.columnKey) {
+            error.columnKey = 'Column key required';
+        }
+        if (!c.joinType) {
+            error.joinType = 'Join type required';
+        }
+        const hasError = Object.values(error).some(err => err);
+        if (hasError) {
+            error.id = c.id;
+            errors.columnFilters.push(error);
+        }
+    });
+
+    const hasErrors = Object.values(errors).some(val => {
+        if (Array.isArray(val)) {
+            return val.length > 0;
+        }
+        return val;
+    });
+    return {errors, hasErrors};
 }
 
 export const action: ActionFunction = async ({request}) => {
@@ -226,27 +280,7 @@ export const action: ActionFunction = async ({request}) => {
     invariant(state, 'State cannot be empty');
     const intent = formData.get('intent');
     if (intent === 'runQuery') {
-        const errors: ReportModel = {
-            id: '',
-            name: '',
-            queryId: '',
-            columns: [],
-            columnFilters: [],
-            securityCode: [],
-            description: ''
-        };
-        if (!state.name) {
-            errors.name = 'Name must not null';
-        }
-        if (!state.queryId) {
-            errors.queryId = 'Query Id must not null'
-        }
-        const hasErrors = Object.values(errors).some(val => {
-            if (Array.isArray(val)) {
-                return val.length > 0;
-            }
-            return val;
-        });
+        const {errors, hasErrors} = validateErrors(state);
         if (hasErrors) {
             return json({...state, errors});
         }
@@ -255,6 +289,40 @@ export const action: ActionFunction = async ({request}) => {
         invariant(qry, 'Query data must not null');
         const data = await query(qry.sqlQuery);
         return json({...state, errors, recordSet: data.recordSet, columns: qry.columns.filter(c => c.enabled)});
+    }
+    if (intent === 'save') {
+        const {errors, hasErrors} = validateErrors(state);
+        if (hasErrors) {
+            return json({...state, errors});
+        }
+        const db = await loadDb();
+
+        if (state.id) {
+            const data = db.reports?.find(report => report.id === state.id);
+            invariant(data, 'Report cannot be empty');
+            data.name = state.name;
+            data.description = state.description;
+            data.queryId = state.queryId;
+            data.columns = state.columns;
+            data.columnFilters = state.columnFilters;
+            data.securityCode = state.securityCode;
+            await persistDb();
+            return json({...data,errors})
+        } else {
+            const dataO: any = {};
+            const data: ReportModel = dataO;
+            data.name = state.name;
+            data.description = state.description;
+            data.queryId = state.queryId;
+            data.columns = state.columns;
+            data.columnFilters = state.columnFilters;
+            data.securityCode = state.securityCode;
+            data.id = v4()
+            db.reports?.push(data);
+            await persistDb();
+            return json({...data,errors})
+            //return redirect('/reports/'+data.id);
+        }
     }
     return json({...state});
 }

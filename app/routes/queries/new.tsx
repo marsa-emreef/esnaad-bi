@@ -18,8 +18,6 @@ import {v4} from "uuid";
 import {validateErrors} from "~/routes/queries/validateErrors";
 import produce from "immer";
 
-
-
 export const action: ActionFunction = async ({request}) => {
     const formData = await request.formData();
     const state: QueryModel = await actionStateFunction<QueryModel>({formData}) || {
@@ -32,15 +30,8 @@ export const action: ActionFunction = async ({request}) => {
 
     const intent = formData.get('intent');
     if (intent === 'save') {
-        const errors = validateErrors(state);
-        const hasErrors = Object.entries(errors).some(([, value]) => {
-            if (Array.isArray(value)) {
-                console.log('We have array value ',value);
-                return value.length > 0
-            }
-            console.log('We have error value ',value);
-            return value;
-        });
+        const {errors,hasErrors} = validateErrors(state);
+
         if (hasErrors) {
             return json({...state, errors});
         }
@@ -59,13 +50,8 @@ export const action: ActionFunction = async ({request}) => {
         return redirect('/queries/' + data.id);
     }
     if (intent === 'runQuery') {
-        const errors = validateErrors(state);
-        const hasErrors = Object.entries(errors).some(([, value]) => {
-            if (Array.isArray(value)) {
-                return value.length > 0
-            }
-            return value;
-        });
+        const {errors,hasErrors} = validateErrors(state);
+
         if (hasErrors) {
             return json({...state, errors});
         }

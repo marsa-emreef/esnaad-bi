@@ -23,7 +23,12 @@ export function validateErrors(state: QueryModel) {
             colError.key = col.key;
             errors.columns.push(colError);
         }
-
     })
-    return errors;
+    const hasErrors = Object.entries(errors).some(([, value]) => {
+        if (Array.isArray(value)) {
+            return value.length > 0
+        }
+        return value;
+    });
+    return {errors,hasErrors};
 }
