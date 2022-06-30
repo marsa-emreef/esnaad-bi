@@ -6,7 +6,11 @@ export default function Label(props: React.PropsWithChildren<{ label: string, vA
     const labelWidth = useContext(LabelWidthContext);
     return <Horizontal vAlign={props.vAlign ?? 'center'} mB={10}>
         <Vertical style={{flexShrink: 0}} w={labelWidth}>
-            {props.label}
+            <Horizontal>
+                {props.label}
+                <Vertical mL={5}>:</Vertical>
+            </Horizontal>
+
         </Vertical>
         <Vertical mL={10} w={'100%'}>
             {props.children}

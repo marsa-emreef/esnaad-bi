@@ -12,6 +12,7 @@ import type {DbModel} from "~/db/DbModel";
 import {Button, Divider, Menu} from "antd";
 import {IoLogoWebComponent} from "react-icons/io5";
 import {SiMicrosoftsqlserver} from "react-icons/si"
+import {MdOutlineTableView} from "react-icons/md";
 
 export const loader: LoaderFunction = async () => {
     const db = await loadDb();
@@ -47,6 +48,11 @@ export default function AppShell() {
                         mode="inline"
                         inlineCollapsed={!menuFold}
                         items={[
+                            {
+                                label: <Link to={'/reports/new'}>Reports</Link>,
+                                key:'report',
+                                icon : <MdOutlineTableView/>
+                            },
                             {
                                 label: <Link to={'/queries/new'}>Queries</Link>,
                                 key: 'newQuery',
