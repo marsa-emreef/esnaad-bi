@@ -9,7 +9,7 @@ import type {ColumnFilterModel, ColumnModel, QueryModel, RendererModel, ReportMo
 import type {ActionFunction, LoaderFunction} from "@remix-run/node";
 import {json} from "@remix-run/node";
 import {loadDb, persistDb} from "~/db/db.server";
-import {useLoaderData} from "@remix-run/react";
+import {ShouldReloadFunction, useLoaderData} from "@remix-run/react";
 import {v4} from "uuid";
 import invariant from "tiny-invariant";
 import {query} from "~/db/esnaad.server";
@@ -39,7 +39,7 @@ export const loader: LoaderFunction = async ({params}) => {
         const qry = db.queries?.find(q => q.id === reportData.queryId);
         invariant(qry, 'Query data cannot be empty');
         const queryData = await query(qry.sqlQuery);
-        reportData.recordSet = queryData.recordSet;
+        reportData.recordSet = queryData.recordSet.filter(filterFunction(reportData.columnFilters));
         reportData.originalRecordSet = queryData.recordSet;
         data = reportData;
 
@@ -164,7 +164,10 @@ export default function ReportRoute() {
     const errors = $state.current?.errors;
 
     return <Vertical h={'100%'}>
-        <HeaderPanel title={$state.current?.name ? $state.current?.name : 'New Report'}/>
+        <ActionStateValue selector={state => $state?.current?.name || 'New Report'} render={(value) => {
+            return <HeaderPanel title={value}/>
+        }}/>
+
         <Vertical p={20} style={{flexGrow: 1}} overflow={'auto'}>
             <Form method={'post'}>
                 <PlainWhitePanel>
@@ -330,7 +333,7 @@ export const action: ActionFunction = async ({request}) => {
         const qry = db.queries?.find(q => q.id === state.queryId);
         invariant(qry, 'Query data must not null');
         const data = await query(qry.sqlQuery);
-        return json({...state, errors, recordSet: data.recordSet, columns: qry.columns.filter(c => c.enabled)});
+        return json({...state, errors, recordSet: data.recordSet.filter(filterFunction(state.columnFilters)),originalRecordSet:data.recordSet, columns: qry.columns.filter(c => c.enabled)});
     }
     if (intent === 'applyFilter') {
         const columnFilters = state.columnFilters;
@@ -364,8 +367,12 @@ export const action: ActionFunction = async ({request}) => {
             db.reports.push(data);
             await persistDb();
             return json({...state, ...data, errors})
-            //return redirect('/reports/'+data.id);
         }
     }
     return json({...state});
+}
+
+
+export const unstable_shouldReload:ShouldReloadFunction = ({url,prevUrl,submission,params}) => {
+    return false;
 }

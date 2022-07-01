@@ -1,5 +1,5 @@
 import type {LinksFunction, LoaderFunction, MetaFunction} from "@remix-run/node";
-import {Links, LiveReload, Meta, Scripts, ScrollRestoration,} from "@remix-run/react";
+import {Links, LiveReload, Meta, Scripts, ScrollRestoration, ShouldReloadFunction,} from "@remix-run/react";
 import styles from "antd/dist/antd.css";
 import AppShell, {loader as appShellLoader} from "~/components/AppShell";
 import {ThemeProvider} from "~/components/Theme";
@@ -27,6 +27,7 @@ export const loader: LoaderFunction = async (params) => {
     return appShellLoader(params);
 }
 
+
 export default function App() {
     return (
         <html lang="en">
@@ -45,3 +46,5 @@ export default function App() {
         </html>
     );
 }
+
+

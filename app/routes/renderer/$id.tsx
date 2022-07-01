@@ -138,7 +138,6 @@ export const action: ActionFunction = async ({request}) => {
     const intent = formData.get('intent');
     if (intent === 'save') {
         const {hasErrors,errors} = validateErrors(state);
-        console.log('hasErrors',hasErrors);
         if (hasErrors) {
             return json({...state, errors});
         }
