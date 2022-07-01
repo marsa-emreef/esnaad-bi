@@ -1,6 +1,6 @@
 import fs from "fs/promises";
 import {join} from "path";
-import type {DbModel} from "~/db/DbModel";
+import type {DbModel} from "~/db/model";
 
 let db: DbModel | undefined = undefined;
 const dbDirectory = '.database';

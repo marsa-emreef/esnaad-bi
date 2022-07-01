@@ -5,7 +5,7 @@ import {PlainWhitePanel} from "~/components/PlainWhitePanel";
 import {actionStateFunction, useRemixActionState} from "~/remix-hook-actionstate";
 import Label from "~/components/Label";
 import {Button, Divider, Input, Select, Table, Tooltip} from "antd";
-import type {ColumnFilterModel, ColumnModel, QueryModel, RendererModel, ReportModel} from "~/db/DbModel";
+import type {ColumnFilterModel, ColumnModel, QueryModel, RendererModel, ReportModel} from "~/db/model";
 import type {ActionFunction, LoaderFunction} from "@remix-run/node";
 import {json} from "@remix-run/node";
 import {loadDb, persistDb} from "~/db/db.server";

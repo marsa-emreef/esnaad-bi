@@ -3,7 +3,7 @@ import {HeaderPanel} from "~/components/HeaderPanel";
 import type {ActionFunction, LoaderFunction} from "@remix-run/node";
 import {json, redirect} from "@remix-run/node";
 import {loadDb, persistDb} from "~/db/db.server";
-import type {ColumnModel, QueryModel, RendererModel} from "~/db/DbModel";
+import type {ColumnModel, QueryModel, RendererModel} from "~/db/model";
 import {useLoaderData} from "@remix-run/react";
 import {actionStateFunction, useRemixActionState, useRemixActionStateInForm} from "~/remix-hook-actionstate";
 import {PlainWhitePanel} from "~/components/PlainWhitePanel";

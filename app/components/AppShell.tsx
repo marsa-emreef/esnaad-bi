@@ -8,7 +8,7 @@ import type {LoaderFunction} from "@remix-run/node";
 import {json} from "@remix-run/node";
 import {Link, Outlet, useLoaderData} from "@remix-run/react";
 import {loadDb} from "~/db/db.server";
-import type {DbModel} from "~/db/DbModel";
+import type {DbModel} from "~/db/model";
 import {Button, Divider, Menu} from "antd";
 import {IoLogoWebComponent} from "react-icons/io5";
 import {SiMicrosoftsqlserver} from "react-icons/si"
