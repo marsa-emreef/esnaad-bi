@@ -16,12 +16,13 @@ import {query} from "~/db/esnaad.server";
 import type {Dispatch, SetObserverAction} from "react-hook-useobserver";
 import produce from "immer";
 import {MdDelete} from "react-icons/md";
+import {filterFunction} from "~/routes/reports/filterFunction";
 
 export const loader: LoaderFunction = async ({params}) => {
     const id = params.id;
 
     const db = await loadDb();
-    let data: ReportModel & { recordSet?: any[] } = {
+    let data: ReportModel & { recordSet?: any[], originalRecordSet?: any[] } = {
         id: '',
         columnFilters: [],
         queryId: '',
@@ -29,15 +30,17 @@ export const loader: LoaderFunction = async ({params}) => {
         description: '',
         columns: [],
         securityCode: [],
-        recordSet: []
+        recordSet: [],
+        originalRecordSet: []
     };
     if (id !== 'new') {
-        const reportData: ((ReportModel & { recordSet?: any[] }) | undefined) = db.reports?.find(r => r.id === id);
+        const reportData: ((ReportModel & { recordSet?: any[], originalRecordSet?: any[] }) | undefined) = db.reports?.find(r => r.id === id);
         invariant(reportData, 'Report data cannot be empty');
         const qry = db.queries?.find(q => q.id === reportData.queryId);
         invariant(qry, 'Query data cannot be empty');
         const queryData = await query(qry.sqlQuery);
         reportData.recordSet = queryData.recordSet;
+        reportData.originalRecordSet = queryData.recordSet;
         data = reportData;
 
     }
@@ -53,10 +56,10 @@ export const loader: LoaderFunction = async ({params}) => {
 
 type StateType =
     ReportModel
-    & { providers?: { queries?: QueryModel[], renderer?: RendererModel[] }, recordSet?: any[], errors?: ReportModel };
+    & { providers?: { queries?: QueryModel[], renderer?: RendererModel[] }, recordSet?: any[], originalRecordSet?: any[], errors?: ReportModel };
 
-const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queries?: QueryModel[], queryId?: string, recordSet?: any[], filter: ColumnFilterModel, setState: Dispatch<SetObserverAction<StateType>>, isEquals: boolean, isFreeText: boolean }) {
-    const {filter, setState, isFreeText, isEquals, queries, queryId, recordSet} = props;
+const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queries?: QueryModel[], queryId?: string, filter: ColumnFilterModel, setState: Dispatch<SetObserverAction<StateType>>, isEquals: boolean, isFreeText: boolean, originalRecordSet?: any[] }) {
+    const {filter, setState, isFreeText, isEquals, queries, queryId,  originalRecordSet} = props;
     return <Horizontal key={filter.id} mB={10}>
         <Vertical w={100} style={{flexShrink: 0}}>
             <Select value={filter.joinType} onSelect={(value: 'and' | 'or') => {
@@ -117,7 +120,7 @@ const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queri
                             }
                             return 0;
                         }}>
-                    {recordSet?.reduce((set: Array<any>, data) => {
+                    {originalRecordSet?.reduce((set: Array<any>, data) => {
                         const key = filter.columnKey;
                         const val = data[key];
                         if (set.indexOf(val) < 0) {
@@ -141,7 +144,7 @@ const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queri
             <Button icon={<MdDelete/>} onClick={() => {
                 setState(produce(draft => {
                     const indexId = draft.columnFilters.findIndex(cf => cf.id === filter.id);
-                    draft.columnFilters.splice(indexId,1);
+                    draft.columnFilters.splice(indexId, 1);
                 }));
             }}/>
         </Vertical>
@@ -161,8 +164,8 @@ export default function ReportRoute() {
     const errors = $state.current?.errors;
 
     return <Vertical h={'100%'}>
-        <HeaderPanel title={$state.current?.name ? $state.current?.name:'New Report'}/>
-        <Vertical p={20} style={{flexGrow:1}} overflow={'auto'}>
+        <HeaderPanel title={$state.current?.name ? $state.current?.name : 'New Report'}/>
+        <Vertical p={20} style={{flexGrow: 1}} overflow={'auto'}>
             <Form method={'post'}>
                 <PlainWhitePanel>
                     <Label label={'Name'}>
@@ -209,20 +212,22 @@ export default function ReportRoute() {
                             Query</Button>
                     </Horizontal>
                     <Divider orientation={"left"} style={{fontSize: '1rem'}}>Filters</Divider>
-                    <ActionStateValue selector={state => state?.columnFilters} render={(columnFilter: any[]) => {
+                    <ActionStateValue selector={state => state?.columnFilters} render={(columnFilters?: ColumnFilterModel[]) => {
                         return <>
-                            {columnFilter.map((filter: ColumnFilterModel) => {
+                            {columnFilters?.map((filter: ColumnFilterModel) => {
                                 const isEquals = filter.filterCondition === 'equals';
                                 const isFreeText = !isEquals;
                                 return <FilterRowItemRenderer queries={$state.current?.providers?.queries}
                                                               queryId={$state.current?.queryId}
-                                                              recordSet={$state.current?.recordSet}
+                                                              originalRecordSet={$state.current?.originalRecordSet}
                                                               filter={filter} setState={setState} isEquals={isEquals}
                                                               isFreeText={isFreeText} key={filter.id}/>
                             })}
                         </>
                     }}/>
                     <Horizontal hAlign={'right'}>
+                        <Button type={"dashed"} style={{marginRight: 5}} htmlType={'submit'} name={'intent'}
+                                value={'applyFilter'}>Apply Filter Changes</Button>
                         <Button type={"primary"} onClick={() => {
                             setState(val => {
                                 const columnFilters = [...val?.columnFilters];
@@ -241,7 +246,7 @@ export default function ReportRoute() {
                     </Horizontal>
                     <Divider orientation={"left"}>Data</Divider>
                     <ActionStateValue selector={state => ({columns: state?.columns, recordSet: state?.recordSet})}
-                                      render={({columns, recordSet}:{columns:ColumnModel[],recordSet:any[]}) => {
+                                      render={({columns, recordSet}: { columns: ColumnModel[], recordSet: any[] }) => {
                                           const cols = columns?.map(col => {
                                               return {
                                                   title: col.name,
@@ -313,27 +318,27 @@ function validateErrors(state: ReportModel) {
 
 export const action: ActionFunction = async ({request}) => {
     const formData = await request.formData();
-    const state = await actionStateFunction<ReportModel>({formData});
+    const state = await actionStateFunction<ReportModel & { recordSet: any[], originalRecordSet: any[] }>({formData});
     invariant(state, 'State cannot be empty');
     const intent = formData.get('intent');
+    const {errors, hasErrors} = validateErrors(state);
+    if (hasErrors) {
+        return json({...state, errors});
+    }
     if (intent === 'runQuery') {
-        const {errors, hasErrors} = validateErrors(state);
-        if (hasErrors) {
-            return json({...state, errors});
-        }
         const db = await loadDb();
         const qry = db.queries?.find(q => q.id === state.queryId);
         invariant(qry, 'Query data must not null');
         const data = await query(qry.sqlQuery);
         return json({...state, errors, recordSet: data.recordSet, columns: qry.columns.filter(c => c.enabled)});
     }
+    if (intent === 'applyFilter') {
+        const columnFilters = state.columnFilters;
+        const recordSet = state.originalRecordSet.filter(filterFunction(columnFilters));
+        return json({...state, recordSet});
+    }
     if (intent === 'save') {
-        const {errors, hasErrors} = validateErrors(state);
-        if (hasErrors) {
-            return json({...state, errors});
-        }
         const db = await loadDb();
-
         if (state.id) {
             const data = db.reports?.find(report => report.id === state.id);
             invariant(data, 'Report cannot be empty');
