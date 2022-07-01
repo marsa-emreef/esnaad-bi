@@ -121,7 +121,7 @@ export const loader: LoaderFunction = async () => {
 export default function NewRoute() {
     const renderers = useLoaderData<Array<RendererModel>>();
 
-    const [state, setState, {Form}] = useRemixActionState<QueryModel & { renderers?: RendererModel[], errors?: QueryModel }>({
+    const [$state, setState, {Form}] = useRemixActionState<QueryModel & { renderers?: RendererModel[], errors?: QueryModel }>({
         errors: undefined,
         renderers,
         columns: [],
@@ -130,6 +130,7 @@ export default function NewRoute() {
         name: '',
         description: ''
     });
+    const state = $state.current;
     const errors = state?.errors;
     return <Vertical h={'100%'} overflow={'auto'}>
         <HeaderPanel title={'New Query'}/>
@@ -221,7 +222,8 @@ function EnableColumnRenderer(props: { value: any, record: ColumnModel }) {
 }
 
 function RendererColumnRenderer(props: { value: any, record: ColumnModel }) {
-    const [state, setState, {useActionStateValue}] = useRemixActionStateInForm<QueryModel & { renderers: Array<RendererModel>, errors?: QueryModel }>();
+    const [$state, setState, {useActionStateValue}] = useRemixActionStateInForm<QueryModel & { renderers: Array<RendererModel>, errors?: QueryModel }>();
+    const state = $state.current;
     const isEnabled = useActionStateValue(val => val?.columns.find(c => c.key === props.record.key)?.enabled);
     const error = useActionStateValue(val => val?.errors?.columns?.find(c => c.key === props.record.key)?.rendererId);
     return <Vertical>
@@ -234,7 +236,7 @@ function RendererColumnRenderer(props: { value: any, record: ColumnModel }) {
                             draft.columns[colIndex].rendererId = value;
                         }));
                     }}>
-                {state.renderers.map(renderer => {
+                {state?.renderers.map(renderer => {
                     return <Select.Option value={renderer.id} key={renderer.id}>{renderer.name}</Select.Option>
                 })}
             </Select>

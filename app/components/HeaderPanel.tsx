@@ -21,7 +21,7 @@ export function HeaderPanel(props: { title: string }) {
     const {pathname} = matches[matches.length - 1];
     const pathNames = pathname.split('/').filter(s => s).map(s => toPascalCase(s));
 
-    return <Vertical backgroundColor={$theme.current.panelBackgroundColor} p={10}>
+    return <Vertical backgroundColor={$theme.current.panelBackgroundColor} p={10} style={{boxShadow:'0px 20px 12px -20px rgba(0,0,0,0.1)',zIndex:1}}>
         <Horizontal pL={10} pR={10}>
             {pathNames.map((p, index) => {
                 const isLastIndex = index === pathNames.length - 1;

@@ -1,5 +1,5 @@
 import React, {createContext, useCallback, useContext, useEffect, useMemo, useRef, useState} from "react";
-import {ObserverValue, useObserver} from "react-hook-useobserver";
+import {Observer, ObserverValue, useObserver} from "react-hook-useobserver";
 import {Form as RemixForm, FormProps, useActionData} from "@remix-run/react";
 
 /**
@@ -51,8 +51,7 @@ type RenderFC = (value: any) => React.ReactElement;
 /**
  * Component type for getting the action state value
  */
-export type ActionStateValueFC<T> = React.FC<{selector: (param?: T) => any, render: RenderFC}>
-
+export type ActionStateValueFC<T> = React.FC<{ selector: (param?: T) => any, render: RenderFC }>
 
 
 /**
@@ -69,7 +68,7 @@ const FormContext = createContext<any>([]);
 /**
  * Hooks to get the formState by using the remix action state
  */
-export function useRemixActionStateInForm<T>(): [T, React.Dispatch<React.SetStateAction<T>>, {
+export function useRemixActionStateInForm<T>(): [Observer<T|undefined>, React.Dispatch<React.SetStateAction<T>>, {
     useActionStateListener: UseActionStateListener<T>,
     useActionStateValue: UseActionStateValue<T>,
     ActionStateValue: ActionStateValueFC<T>
@@ -94,7 +93,7 @@ export function useRemixActionStateInForm<T>(): [T, React.Dispatch<React.SetStat
  5. Form : This is the React component that can be used as an alternative to remix Form. With this Form element, we do not need to Mount ActionStateField inside Remix Form anymore.
  * </pre>
  */
-export function useRemixActionState<T>(initValue?: (T | (() => T))): [T | undefined, React.Dispatch<React.SetStateAction<T>>, {
+export function useRemixActionState<T extends object>(initValue?: (T | (() => T))): [Observer<T | undefined>, React.Dispatch<React.SetStateAction<T>>, {
     ActionStateField: React.FC,
     useActionStateListener: UseActionStateListener<T | undefined>,
     useActionStateValue: UseActionStateValue<T>,
@@ -105,7 +104,6 @@ export function useRemixActionState<T>(initValue?: (T | (() => T))): [T | undefi
     const actionData = useActionData<T>();
     const isMounted = useRef(false);
     const [$state, setState] = useObserver<T | undefined>(initValue);
-
 
     useEffect(() => {
         if (!isMounted.current) {
@@ -125,8 +123,6 @@ export function useRemixActionState<T>(initValue?: (T | (() => T))): [T | undefi
 
         return ActionStateField;
     }, [$state]);
-
-    const state = $state.current;
 
     const hooks = useMemo(() => {
         function useActionStateListener<T>(selector: (param?: (T)) => any, listener: (newVal: any, oldVal: any) => void) {
@@ -156,19 +152,19 @@ export function useRemixActionState<T>(initValue?: (T | (() => T))): [T | undefi
         }
 
         function Form(props: FormProps & React.RefAttributes<HTMLFormElement>) {
-            const hiddenActionStateRef = useRef<HTMLInputElement|null>(null);
+            const hiddenActionStateRef = useRef<HTMLInputElement | null>(null);
             const onSubmit = props.onSubmit;
-            const onSubmitCallback = useCallback((event) =>{
-                if(onSubmit)onSubmit(event);
+            const onSubmitCallback = useCallback((event) => {
+                if (onSubmit) onSubmit(event);
                 const value = JSON.stringify($state.current);
-                hiddenActionStateRef.current?.setAttribute('value',value);
-            },[onSubmit]);
+                hiddenActionStateRef.current?.setAttribute('value', value);
+            }, [onSubmit]);
             return <RemixForm {...props} onSubmit={onSubmitCallback}>
-            <FormContext.Provider
-                value={[state, setState, {useActionStateListener, useActionStateValue, ActionStateValue}]}>
-            <input ref={(dom) => hiddenActionStateRef.current = dom} type={'hidden'} name={'_actionState'} />
-            {props.children}
-            </FormContext.Provider>
+                <FormContext.Provider
+                    value={[$state, setState, {useActionStateListener, useActionStateValue, ActionStateValue}]}>
+                    <input ref={(dom) => hiddenActionStateRef.current = dom} type={'hidden'} name={'_actionState'}/>
+                    {props.children}
+                </FormContext.Provider>
             </RemixForm>
         }
 
@@ -176,7 +172,8 @@ export function useRemixActionState<T>(initValue?: (T | (() => T))): [T | undefi
     }, [$state]);
 
     const {ActionStateValue, useActionStateValue, useActionStateListener, Form} = hooks;
-    return [state, setState as React.Dispatch<React.SetStateAction<T>>, {
+    
+    return [$state, setState as React.Dispatch<React.SetStateAction<T>>, {
         ActionStateField,
         useActionStateListener,
         useActionStateValue,

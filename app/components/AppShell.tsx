@@ -31,8 +31,8 @@ export default function AppShell() {
                 const menuFold = $menuFold.current;
                 return <Vertical backgroundColor={$theme.current.panelBackgroundColor}
                                  style={{
-                                     boxShadow: `20px 0 20px -20px rgba(0,0,0,0.2)`,
-                                     zIndex: 1,
+                                     boxShadow: `20px 0 20px -20px rgba(0,0,0,0.15)`,
+                                     zIndex: 2,
                                      flexShrink: 0,
                                      width: menuFold ? 300 : 80,
                                      transition: 'width 300ms cubic-bezier(0,0,0.7,0.9)'
@@ -44,6 +44,7 @@ export default function AppShell() {
                         </Horizontal>
                     </Vertical>
                     <Divider plain={true} style={{margin: 0}}/>
+                    <Vertical style={{flexGrow:1,overflow:'auto'}}>
                     <Menu
                         mode="inline"
                         inlineCollapsed={!menuFold}
@@ -83,7 +84,7 @@ export default function AppShell() {
                             }
                         ]}
                     />
-
+                    </Vertical>
 
                 </Vertical>
             }}/>

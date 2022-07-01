@@ -23,10 +23,11 @@ export const loader: LoaderFunction = async ({params}) => {
 export default function UpdateRendererRoute(){
     const renderer = useLoaderData<RendererModel>();
     const id = renderer.id;
-    const [state, setState, {
+    const [$state, setState, {
         Form,
         useActionStateValue
     }] = useRemixActionState<RendererModel & { errors?: RendererModel }>(renderer);
+    const state = $state.current;
     useEffect(() => {
         setState(renderer);
         // eslint-disable-next-line

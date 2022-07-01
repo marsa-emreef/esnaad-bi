@@ -16,8 +16,8 @@ import type {RendererModel} from "~/db/DbModel";
 
 export default function NewRendererRouter() {
 
-    const [state, setState, {Form}] = useRemixActionState<RendererModel & { errors: RendererModel }>();
-
+    const [$state, setState, {Form}] = useRemixActionState<RendererModel & { errors: RendererModel }>();
+    const state = $state.current;
     return <Vertical>
         <HeaderPanel title={'New Renderer'}/>
         <Vertical p={20}>

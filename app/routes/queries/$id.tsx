@@ -62,7 +62,8 @@ function NameColumnRenderer(props: { record: any, value: any }) {
 }
 
 function RendererColumnRenderer(props: { record: any, value: any }) {
-    const [state, setState, {useActionStateValue}] = useRemixActionStateInForm<QueryModel & { renderers: RendererModel[], errors?: QueryModel }>();
+    const [$state, setState, {useActionStateValue}] = useRemixActionStateInForm<QueryModel & { renderers: RendererModel[], errors?: QueryModel }>();
+    const state = $state.current;
     const isEnabled = useActionStateValue(val => val?.columns.find(col => col.key === props.record.key)?.enabled);
     const error = useActionStateValue(val => val?.errors?.columns?.find(col => col.key === props.record.key)?.rendererId);
     return <Vertical>
@@ -76,7 +77,7 @@ function RendererColumnRenderer(props: { record: any, value: any }) {
                         }))
                     }}
             >
-                {state.renderers.map(renderer => {
+                {state?.renderers.map(renderer => {
                     return <Select.Option value={renderer.id} key={renderer.id}>{renderer.name}</Select.Option>
                 })}
             </Select>
@@ -87,10 +88,11 @@ function RendererColumnRenderer(props: { record: any, value: any }) {
 // eslint-disable-next-line
 export default function QueriesRoute() {
     const query = useLoaderData<QueryModel>();
-    const [state, setState, {
+    const [$state, setState, {
         Form,
         useActionStateValue
     }] = useRemixActionState<QueryModel & { errors?: QueryModel }>(query);
+    const state = $state.current;
     const id = query.id;
 
     useEffect(() => {
@@ -100,10 +102,10 @@ export default function QueriesRoute() {
 
     const errors = state?.errors;
 
-    return <Vertical>
+    return <Vertical h={'100%'}>
         <HeaderPanel title={state?.name || ''}/>
-        <Form method={'post'}>
-            <Vertical p={20}>
+        <Vertical p={20} style={{flexGrow: 1}} overflow={'auto'}>
+            <Form method={'post'}>
                 <PlainWhitePanel>
                     <Label label={'Name'}>
                         <Tooltip title={errors?.name}>
@@ -183,8 +185,8 @@ export default function QueriesRoute() {
                         <Button type={'primary'} htmlType={'submit'} name={'intent'} value={'save'}>Save</Button>
                     </Horizontal>
                 </PlainWhitePanel>
-            </Vertical>
-        </Form>
+            </Form>
+        </Vertical>
     </Vertical>
 }
 
@@ -194,7 +196,7 @@ export const action: ActionFunction = async ({request}) => {
     invariant(state, 'State must have value');
     const intent = formData.get('intent');
     if (intent === 'runQuery') {
-        const {errors,hasErrors} = validateErrors(state);
+        const {errors, hasErrors} = validateErrors(state);
         if (hasErrors) {
             return json({...state, errors});
         }
@@ -221,7 +223,7 @@ export const action: ActionFunction = async ({request}) => {
         }
     }
     if (intent === 'save') {
-        const {errors,hasErrors} = validateErrors(state);
+        const {errors, hasErrors} = validateErrors(state);
 
         if (hasErrors) {
             return json({...state, errors});
