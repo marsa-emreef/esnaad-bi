@@ -3,7 +3,7 @@ import {HeaderPanel} from "~/components/HeaderPanel";
 import type {ActionFunction, LoaderFunction} from "@remix-run/node";
 import {json, redirect} from "@remix-run/node";
 import {loadDb, persistDb} from "~/db/db.server";
-import type {QueryModel, RendererModel} from "~/db/DbModel";
+import type {ColumnModel, QueryModel, RendererModel} from "~/db/DbModel";
 import {useLoaderData} from "@remix-run/react";
 import {actionStateFunction, useRemixActionState, useRemixActionStateInForm} from "~/remix-hook-actionstate";
 import {PlainWhitePanel} from "~/components/PlainWhitePanel";
@@ -14,14 +14,23 @@ import TextArea from "antd/lib/input/TextArea";
 import invariant from "tiny-invariant";
 import type {QueryResult} from "~/db/esnaad.server";
 import {query} from "~/db/esnaad.server";
-import {validateErrors} from "~/routes/queries/validateErrors";
 import produce from "immer";
+import {v4} from "uuid";
 
 export const loader: LoaderFunction = async ({params}) => {
     const id = params.id;
+    const isNew = id === 'new';
+    let query: QueryModel | undefined = {
+        id: '',
+        name: '',
+        sqlQuery: '',
+        description: '',
+        columns: []
+    }
     const db = await loadDb();
-    const query = db.queries?.find(q => q.id === id);
-
+    if (!isNew) {
+        query = db.queries?.find(q => q.id === id);
+    }
     // lets load loaders
     return json({...query, renderers: db.renderer});
 }
@@ -29,7 +38,6 @@ export const loader: LoaderFunction = async ({params}) => {
 
 function EnabledCellRenderer(props: { record: any, value: any }) {
     const [, setState, {useActionStateValue}] = useRemixActionStateInForm<QueryModel>();
-
 
     return <Vertical hAlign={'center'}>
         <Checkbox checked={useActionStateValue(val => val?.columns?.find(col => col.key === props.record.key)?.enabled)}
@@ -85,14 +93,13 @@ function RendererColumnRenderer(props: { record: any, value: any }) {
     </Vertical>
 }
 
-// eslint-disable-next-line
 export default function QueriesRoute() {
     const query = useLoaderData<QueryModel>();
     const [$state, setState, {
         Form,
-        useActionStateValue
+        ActionStateValue
     }] = useRemixActionState<QueryModel & { errors?: QueryModel }>(query);
-    const state = $state.current;
+
     const id = query.id;
 
     useEffect(() => {
@@ -100,90 +107,109 @@ export default function QueriesRoute() {
         // eslint-disable-next-line
     }, [id]);
 
-    const errors = state?.errors;
+    const errors = $state.current?.errors;
 
     return <Vertical h={'100%'}>
-        <HeaderPanel title={state?.name || ''}/>
+        <ActionStateValue selector={state => state?.name} render={(value) => {
+            return <HeaderPanel title={value}/>
+        }}/>
+
         <Vertical p={20} style={{flexGrow: 1}} overflow={'auto'}>
             <Form method={'post'}>
                 <PlainWhitePanel>
                     <Label label={'Name'}>
-                        <Tooltip title={errors?.name}>
-                            <Input status={errors?.name ? 'error' : ''}
-                                   value={useActionStateValue(state => state?.name)}
-                                   onChange={(event) => {
-                                       setState(oldVal => {
-                                           return {...oldVal, name: event.target.value}
-                                       })
-                                   }}
-                            />
-                        </Tooltip>
+                        <ActionStateValue selector={state => state?.name} render={(value) => {
+                            return <Tooltip title={errors?.name}>
+                                <Input status={errors?.name ? 'error' : ''}
+                                       value={value}
+                                       onChange={(event) => {
+                                           setState(oldVal => {
+                                               return {...oldVal, name: event.target.value}
+                                           })
+                                       }}
+                                />
+                            </Tooltip>
+                        }}/>
+
                     </Label>
                     <Label label={'Description'} vAlign={'top'}>
-                        <TextArea
-                            value={useActionStateValue(state => state?.description)}
-                            onChange={(event) => {
-                                setState(oldVal => {
-                                    return {...oldVal, description: event.target.value}
-                                });
-                            }}
-                        />
+                        <ActionStateValue selector={state => state?.description} render={(value) => {
+                            return <TextArea
+                                value={value}
+                                onChange={(event) => {
+                                    setState(oldVal => {
+                                        return {...oldVal, description: event.target.value}
+                                    });
+                                }}
+                            />
+                        }}/>
+
                     </Label>
                     <Label label={'SQL Query'} vAlign={'top'}>
-                        <Tooltip title={errors?.sqlQuery}>
-                            <TextArea status={errors?.sqlQuery ? 'error' : ''}
-                                      value={useActionStateValue(val => val?.sqlQuery)}
-                                      style={{height: 200}}
-                                      onChange={(event) => {
-                                          setState(oldVal => {
-                                              return {...oldVal, sqlQuery: event.target.value}
-                                          })
-                                      }}
-                            />
-                        </Tooltip>
+                        <ActionStateValue selector={state => state?.sqlQuery} render={(value) => {
+                            return <Tooltip title={errors?.sqlQuery}>
+                                <TextArea status={errors?.sqlQuery ? 'error' : ''}
+                                          value={value}
+                                          style={{height: 200}}
+                                          onChange={(event) => {
+                                              setState(oldVal => {
+                                                  return {...oldVal, sqlQuery: event.target.value}
+                                              })
+                                          }}
+                                />
+                            </Tooltip>
+                        }}/>
+
                     </Label>
                     <Horizontal hAlign={'right'}>
                         <Button htmlType={'submit'} type={'primary'} name={'intent'} value={'runQuery'}>Run
                             Query</Button>
                     </Horizontal>
                     <Divider orientation={"left"}>Column Mapping</Divider>
-                    <Table columns={[
-                        {
-                            title: 'Enabled',
-                            dataIndex: 'enabled',
-                            render: (value, record) => {
-                                return <EnabledCellRenderer value={value} record={record}/>
-                            }
-                        },
-                        {
-                            title: 'Key',
-                            dataIndex: 'key'
-                        },
-                        {
-                            title: 'Type',
-                            dataIndex: 'type'
-                        },
-                        {
-                            title: 'Name',
-                            dataIndex: 'name',
-                            render: (value, record) => {
-                                return <NameColumnRenderer value={value} record={record}/>
-                            }
+                    <ActionStateValue selector={state => state?.columns} render={(value) => {
+                        return <Table scroll={{x:true}} columns={[
+                            {
+                                title: 'Enabled',
+                                dataIndex: 'enabled',
+                                render: (value, record) => {
+                                    return <EnabledCellRenderer value={value} record={record}/>
+                                }
+                            },
+                            {
+                                title: 'Key',
+                                dataIndex: 'key'
+                            },
+                            {
+                                title: 'Type',
+                                dataIndex: 'type'
+                            },
+                            {
+                                title: 'Name',
+                                dataIndex: 'name',
+                                render: (value, record) => {
+                                    return <NameColumnRenderer value={value} record={record}/>
+                                }
 
-                        },
-                        {
-                            title: 'Renderer',
-                            dataIndex: 'rendererId',
-                            render: (value, record) => {
-                                return <RendererColumnRenderer value={value} record={record}/>
+                            },
+                            {
+                                title: 'Renderer',
+                                dataIndex: 'rendererId',
+                                render: (value, record) => {
+                                    return <RendererColumnRenderer value={value} record={record}/>
+                                }
                             }
-                        }
-                    ]} dataSource={state?.columns}/>
-                    <Horizontal hAlign={'right'}>
-                        <Button type={'link'} htmlType={'submit'} style={{marginRight: 5}} name={'intent'}
-                                value={'delete'}>Delete</Button>
-                        <Button type={'primary'} htmlType={'submit'} name={'intent'} value={'save'}>Save</Button>
-                    </Horizontal>
+                        ]} dataSource={value}/>
+                    }} />
+                    <ActionStateValue selector={state => state?.id} render={value => {
+                        const isNew = value === '';
+                        return <Horizontal hAlign={'right'}>
+                            {!isNew &&
+                                <Button type={'link'} htmlType={'submit'} style={{marginRight: 5}} name={'intent'}
+                                        value={'delete'}>Delete</Button>
+                            }
+                            <Button type={'primary'} htmlType={'submit'} name={'intent'} value={'save'}>Save</Button>
+                        </Horizontal>
+                    }}/>
                 </PlainWhitePanel>
             </Form>
         </Vertical>
@@ -224,20 +250,34 @@ export const action: ActionFunction = async ({request}) => {
     }
     if (intent === 'save') {
         const {errors, hasErrors} = validateErrors(state);
-
         if (hasErrors) {
             return json({...state, errors});
         }
+        const isNew = state.id === '';
         const db = await loadDb();
-        const query = db.queries?.find(q => q.id === state?.id);
-        invariant(query, 'Query object must not null');
-        invariant(state?.name, 'Name is a must');
-        query.name = state?.name;
-        query.description = state?.description;
-        query.sqlQuery = state?.sqlQuery;
-        query.columns = state?.columns
-        await persistDb();
-        return json({...state, errors: {}});
+        if(isNew){
+            const data:QueryModel = {
+                id : v4(),
+                columns : state.columns,
+                sqlQuery : state.sqlQuery,
+                name : state.name,
+                description : state.description
+            }
+            db.queries = db.queries || [];
+            db.queries.push(data);
+            await persistDb();
+            return redirect('/queries/'+data.id);
+        }else{
+            const query = db.queries?.find(q => q.id === state?.id);
+            invariant(query, 'Query object must not null');
+            invariant(state?.name, 'Name is a must');
+            query.name = state?.name;
+            query.description = state?.description;
+            query.sqlQuery = state?.sqlQuery;
+            query.columns = state?.columns
+            await persistDb();
+            return json({...state, errors: {}});
+        }
     }
     if (intent === 'delete') {
         const db = await loadDb();
@@ -247,4 +287,38 @@ export const action: ActionFunction = async ({request}) => {
     }
     const errors = {};
     return json({...state, errors});
+}
+
+
+function validateErrors(state: QueryModel) {
+    const errors: QueryModel = {id: '', sqlQuery: '', name: '', description: '', columns: []};
+    if (!state.name) {
+        errors.name = 'Name is Required';
+    }
+    if (!state.sqlQuery) {
+        errors.sqlQuery = 'SQL Query is required';
+    }
+    state.columns.forEach(col => {
+        const colError: ColumnModel = {name: '', enabled: false, rendererId: '', key: '', type: ''};
+        if (col.enabled) {
+            if (!col.name) {
+                colError.name = 'Name is required';
+            }
+            if (!col.rendererId) {
+                colError.rendererId = 'Render is required'
+            }
+        }
+        const hasErrors = Object.entries(colError).some(([, value]) => value);
+        if (hasErrors) {
+            colError.key = col.key;
+            errors.columns.push(colError);
+        }
+    })
+    const hasErrors = Object.entries(errors).some(([, value]) => {
+        if (Array.isArray(value)) {
+            return value.length > 0
+        }
+        return value;
+    });
+    return {errors,hasErrors};
 }
