@@ -90,7 +90,7 @@ const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queri
                 }));
             }}>
                 {useMemo(() => {
-                    return columns.filter((col) => col.enabled)?.map(col => {
+                    return columns.filter((col:ColumnModel) => col.enabled)?.map((col:ColumnModel) => {
                         return <Select.Option value={col.key} key={col.key}>{col.name}</Select.Option>
                     })
                 }, [columns])}
