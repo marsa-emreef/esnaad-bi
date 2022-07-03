@@ -42,7 +42,6 @@ export const loader: LoaderFunction = async ({params}) => {
         reportData.recordSet = queryData.recordSet.filter(filterFunction(reportData.columnFilters));
         reportData.originalRecordSet = queryData.recordSet;
         data = reportData;
-
     }
     return json({
         ...data,
