@@ -17,6 +17,7 @@ import type {Dispatch, SetObserverAction} from "react-hook-useobserver";
 import produce from "immer";
 import {MdDelete} from "react-icons/md";
 import {filterFunction} from "~/routes/reports/filterFunction";
+import {ColumnsType} from "antd/lib/table";
 
 export const loader: LoaderFunction = async ({params}) => {
     const id = params.id;
@@ -249,11 +250,34 @@ export default function ReportRoute() {
                     <Divider orientation={"left"}>Data</Divider>
                     <ActionStateValue selector={state => ({columns: state?.columns, recordSet: state?.recordSet})}
                                       render={({columns, recordSet}: { columns: ColumnModel[], recordSet: any[] }) => {
-                                          const cols = columns?.map(col => {
+                                          const cols:ColumnsType<any> = columns?.map(col => {
                                               return {
                                                   title: col.name,
                                                   dataIndex: col.key,
-                                                  key: col.key
+                                                  key: col.key,
+                                                  render : (value:any,record:any,index:number) => {
+                                                      try{
+                                                          const renderer = loaderData.providers.renderer.find(r => r.id === col.rendererId);
+                                                          if(renderer === undefined){
+                                                              return value;
+                                                          }
+                                                          invariant(renderer,'Renderer cannot be empty '+col.key+ ' '+col.rendererId);
+                                                          const rendererFunction = renderer?.rendererFunction;
+                                                          const F = new Function(`return (${rendererFunction})(...arguments)`);
+                                                          //cellData,rowData,rowIndex,gridData,columnKey,columnName,context
+                                                          const rowIndex = recordSet.indexOf(record);
+                                                          return <Vertical>
+                                                              {F.apply(null,[value,record,rowIndex,recordSet,col.key,col.name,{}])}
+                                                          </Vertical>
+                                                      }catch(err){
+                                                          console.error(err);
+                                                          return <Vertical>
+                                                              Error
+                                                          </Vertical>
+
+                                                      }
+
+                                                  }
                                               }
                                           });
                                           const rs = recordSet;

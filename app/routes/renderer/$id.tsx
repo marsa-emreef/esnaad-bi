@@ -9,7 +9,7 @@ import {HeaderPanel} from "~/components/HeaderPanel";
 import {PlainWhitePanel} from "~/components/PlainWhitePanel";
 import LabelWidth from "~/components/LabelWidth";
 import Label from "~/components/Label";
-import {Button, Input, Tooltip} from "antd";
+import {Button, Input, Select, Tooltip} from "antd";
 import {CodeEditor} from "~/components/CodeEditor";
 import {useEffect} from "react";
 import invariant from "tiny-invariant";
@@ -22,7 +22,8 @@ export const loader: LoaderFunction = async ({params}) => {
             id: '',
             name: '',
             description: '',
-            rendererFunction: ''
+            rendererFunction: '(cellData,rowData,rowIndex,gridData,columnKey,columnName,context) => cellData',
+            typeOf : 'string'
         };
         return json(data);
     }
@@ -63,7 +64,6 @@ export default function UpdateRendererRoute() {
                                     />
                                 </Tooltip>
                             }}/>
-
                         </Label>
                         <Label label={'Description'}>
                             <ActionStateValue selector={state => state?.description} render={(value) => {
@@ -77,12 +77,24 @@ export default function UpdateRendererRoute() {
                                     />
                                 </Tooltip>
                             }}/>
-
+                        </Label>
+                        <Label label={'Type Of'}>
+                            <ActionStateValue selector={state => state?.typeOf} render={(value) => {
+                                return <Tooltip title={$state.current?.errors?.typeOf}>
+                                    <Select value={value}>
+                                        <Select.Option value={'number'}>Number</Select.Option>
+                                        <Select.Option value={'string'}>String</Select.Option>
+                                        <Select.Option value={'date'}>Date</Select.Option>
+                                        <Select.Option value={'boolean'}>Boolean</Select.Option>
+                                    </Select>
+                                </Tooltip>
+                            }}>
+                            </ActionStateValue>
                         </Label>
                         <Label label={'Render Function'} vAlign={'top'}>
                             <ActionStateValue selector={state => state?.rendererFunction} render={(value) => {
                                 return <Tooltip title={$state.current?.errors?.rendererFunction}>
-                                    <CodeEditor language={'jsx'}  placeholder="(value,record) => <div>{value}</div>"
+                                    <CodeEditor language={'jsx'}  placeholder="(cellData,rowData,rowIndex,gridData,columnKey,columnName,context) => cellData"
                                                 style={{
                                                     height: 200,
                                                     border: $state.current?.errors?.rendererFunction ? `1px solid red` : `1px solid #ccc`
@@ -118,6 +130,9 @@ export default function UpdateRendererRoute() {
 
 function validateErrors(state: RendererModel) {
     const errors:any = {};
+    if (!state?.typeOf) {
+        errors.typeOf = 'Type of is mandatory';
+    }
     if (!state?.name) {
         errors.name = 'Name is mandatory'
     }
@@ -148,7 +163,8 @@ export const action: ActionFunction = async ({request}) => {
             id : v4(),
             name : state?.name,
             description : state?.description,
-            rendererFunction : state?.rendererFunction
+            rendererFunction : state?.rendererFunction,
+            typeOf : state?.typeOf
         }
         if(isNew){
             db.renderer = db.renderer || [];

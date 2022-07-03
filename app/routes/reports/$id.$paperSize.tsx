@@ -133,7 +133,7 @@ function RowRenderer(props: { loaderData: LoaderData, index: number, rowContaine
             width: `calc(100% / ${loaderData?.columns?.length})`,
             flexShrink: 0,
             overflow:'hidden'
-        }}>{rowData[col.key]}</Vertical>)}
+        }}>{rowData[col.key] }</Vertical>)}
     </Horizontal>;
 }
 

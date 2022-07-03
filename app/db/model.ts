@@ -8,7 +8,8 @@ export interface RendererModel {
     id: string,
     name: string,
     description: string,
-    rendererFunction: string
+    rendererFunction: string,
+    typeOf : 'boolean' | 'number' | 'string' | 'date' | 'buffer' | 'object' | 'null' | 'any'
 }
 
 export interface QueryModel {

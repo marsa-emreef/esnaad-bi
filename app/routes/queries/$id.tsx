@@ -16,6 +16,7 @@ import type {QueryResult} from "~/db/esnaad.server";
 import {query} from "~/db/esnaad.server";
 import produce from "immer";
 import {v4} from "uuid";
+import {dbTypeToJsType} from "~/db/dbTypeToJsType";
 
 export const loader: LoaderFunction = async ({params}) => {
     const id = params.id;
@@ -74,10 +75,13 @@ function RendererColumnRenderer(props: { record: any, value: any }) {
     const state = $state.current;
     const isEnabled = useActionStateValue(val => val?.columns.find(col => col.key === props.record.key)?.enabled);
     const error = useActionStateValue(val => val?.errors?.columns?.find(col => col.key === props.record.key)?.rendererId);
+    const value = useActionStateValue(val => val?.columns.find(col => col.key === props.record.key)?.rendererId);
+    const type = useActionStateValue(val => val?.columns.find(col => col.key === props.record.key)?.type);
+    const mapType = dbTypeToJsType(type);
     return <Vertical>
         <Tooltip title={error}>
             <Select status={error ? 'error' : ''} disabled={!isEnabled}
-                    value={useActionStateValue(val => val?.columns.find(col => col.key === props.record.key)?.rendererId)}
+                    value={value}
                     onSelect={(value: string) => {
                         setState(produce((draft) => {
                             const columnIndex = draft.columns.findIndex(col => col.key === props.record.key);
@@ -85,7 +89,7 @@ function RendererColumnRenderer(props: { record: any, value: any }) {
                         }))
                     }}
             >
-                {state?.renderers.map(renderer => {
+                {state?.renderers.filter(r => r.typeOf === mapType).map(renderer => {
                     return <Select.Option value={renderer.id} key={renderer.id}>{renderer.name}</Select.Option>
                 })}
             </Select>
