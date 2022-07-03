@@ -1,12 +1,14 @@
 import {Horizontal, Vertical} from "react-hook-components";
 import {useLoaderData, useLocation, useParams, useSearchParams} from "@remix-run/react";
 import {Button} from "antd";
-import {Dispatch, MutableRefObject, ReactElement, SetStateAction, useContext, useEffect, useRef, useState} from "react";
+import type {Dispatch, MutableRefObject, ReactElement, SetStateAction} from "react";
+import { useContext, useEffect, useRef, useState} from "react";
 import {ThemeContext} from "~/components/Theme";
 import PaperSheet from "~/components/PaperSheet";
-import {json, LoaderFunction} from "@remix-run/node";
+import type { LoaderFunction} from "@remix-run/node";
+import {json} from "@remix-run/node";
 import {loadDb} from "~/db/db.server";
-import {ColumnModel, RendererModel, ReportModel} from "~/db/model";
+import type {ColumnModel, RendererModel, ReportModel} from "~/db/model";
 import invariant from "tiny-invariant";
 import {query} from "~/db/esnaad.server";
 import {filterFunction} from "~/routes/reports/filterFunction";
@@ -24,14 +26,14 @@ function PrintPanel() {
             zIndex: 1,
             boxShadow: '0 0 5px -2px rgba(0,0,0,0.3)'
         }}>
-            <Button type={"primary"} onClick={event => {
+            <Button type={"primary"} onClick={_ => {
                 // @ts-ignore
                 const frame = window.frames['printFrame'];
                 frame?.focus();
                 frame?.print();
             }}>Print</Button>
         </Horizontal>
-        <iframe id={'printFrame'} name={'printFrame'} src={location.pathname + '?paper=' + params.paperSize}
+        <iframe title={'Print Frame'} id={'printFrame'} name={'printFrame'} src={location.pathname + '?paper=' + params.paperSize}
                 style={{height: '100%'}}
                 frameBorder={0}/>
     </Vertical>;
@@ -106,6 +108,7 @@ function RowRenderer(props: { loaderData: LoaderData, index: number, rowContaine
     invariant(recordSet,'RecordSet cannot be null');
     const rowData: any = recordSet[index];
     const rowRef = useRef<HTMLDivElement>(null);
+    const recordSetLength = recordSet.length;
     useEffect(() => {
         const rowHeight = rowRef?.current?.getBoundingClientRect().height || 0;
         if (rowHeight > rowContainerRemainingHeightRef.current) {
@@ -120,16 +123,16 @@ function RowRenderer(props: { loaderData: LoaderData, index: number, rowContaine
         } else {
             rowContainerRemainingHeightRef.current -= rowHeight;
             const nextIndex = index + 1;
-            if(nextIndex < recordSet.length){
+            if(nextIndex < recordSetLength){
                 setRows((oldRows: any[]) => {
                     return [...oldRows, <RowRenderer loaderData={loaderData} index={nextIndex}
                                                      rowContainerRemainingHeightRef={rowContainerRemainingHeightRef}
-                                                     setRows={setRows} setPanels={setPanels}/>];
+                                                     setRows={setRows} setPanels={setPanels} key={index}/>];
                 });
             }
 
         }
-    }, []);
+    }, [index, loaderData, recordSetLength, rowContainerRemainingHeightRef, setPanels, setRows]);
     return <Horizontal ref={rowRef} style={{borderBottom:'1px solid rgba(0,0,0,0.3)'}}>
         {loaderData?.columns?.map(col => <Vertical key={col.key} style={{
             width: `calc(100% / ${loaderData?.columns?.length})`,
@@ -152,8 +155,8 @@ function SheetRenderer(props: { loaderData: LoaderData, index: number, setPanels
         rowContainerRemainingHeightRef.current = containerRef.current?.getBoundingClientRect().height || 0;
         setRows([<RowRenderer loaderData={loaderData} index={index}
                               rowContainerRemainingHeightRef={rowContainerRemainingHeightRef} setRows={setRows}
-                              setPanels={setPanels}/>])
-    }, [loaderData, index]);
+                              setPanels={setPanels} key={index}/>])
+    }, [loaderData, index, setPanels]);
 
     return <PaperSheet padding={'5mm'}>
         <Vertical style={{height: '100%',fontSize:'10px'}}>

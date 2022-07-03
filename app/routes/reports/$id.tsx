@@ -128,7 +128,7 @@ const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queri
                                     .toLowerCase()
                                     .localeCompare((optionB!.children as unknown as string).toLowerCase());
                             } catch (err) {
-                                // we cant process this
+                                // we can not process this
                             }
                             return 0;
                         }}>

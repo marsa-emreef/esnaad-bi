@@ -1,4 +1,4 @@
-import {PropsWithChildren} from "react";
+import type {PropsWithChildren} from "react";
 
 /** Padding area **/
 export default function PaperSheet(props:PropsWithChildren<{padding:string}>){

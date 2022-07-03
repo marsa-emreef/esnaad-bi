@@ -1,4 +1,4 @@
-import {ColumnFilterModel} from "~/db/model";
+import type {ColumnFilterModel} from "~/db/model";
 
 function validateColumnFilter(columnFilter:ColumnFilterModel,record:any){
     if(columnFilter.columnKey in record){
@@ -21,10 +21,15 @@ function validateColumnFilter(columnFilter:ColumnFilterModel,record:any){
                 return stringValue?.endsWith(stringFilterValue);
             }
             case "greaterThan":{
-
+                //@TODO We still need to built this
+                break;
             }
             case "lessThan":{
-
+                //@TODO We still need to built this
+                break;
+            }
+            default : {
+                break;
             }
         }
     }

@@ -1,6 +1,8 @@
 import React, {createContext, useCallback, useContext, useEffect, useMemo, useRef, useState} from "react";
-import {Observer, ObserverValue, useObserver} from "react-hook-useobserver";
-import {Form as RemixForm, FormProps, useActionData} from "@remix-run/react";
+import type {Observer} from "react-hook-useobserver";
+import { ObserverValue, useObserver} from "react-hook-useobserver";
+import type { FormProps} from "@remix-run/react";
+import {Form as RemixForm, useActionData} from "@remix-run/react";
 
 /**
  * we can use actionStateFunction in remix actionFunction to obtain the action state.
@@ -19,7 +21,7 @@ import {Form as RemixForm, FormProps, useActionData} from "@remix-run/react";
     const action = formData.get('action');
     const actionState = await actionStateFunction<StateData>({formData});
     if(action === 'save'){
-        // this is where we can do saving or etc
+        // this is where we can do saving or etc.
     }
     return json(actionState);
 }
@@ -42,7 +44,7 @@ export async function actionStateFunction<T>({formData}: { formData: FormData })
 }
 
 /**
- * Hook type for listening the actionState
+ * Hook types for listening the actionState
  */
 export type UseActionStateListener<T> = (selector: (param?: (T)) => any, listener: (newVal: any, oldVal: any) => void) => void
 
@@ -55,7 +57,7 @@ export type ActionStateValueFC<T> = React.FC<{ selector: (param?: T) => any, ren
 
 
 /**
- * Hook type for getting the action state value
+ * Hook types for getting the action state value
  */
 export type UseActionStateValue<T> = (selector: (param?: T) => any) => any;
 
@@ -89,7 +91,7 @@ export function useRemixActionStateInForm<T>(): [Observer<T|undefined>, React.Di
  1. ActionStateField : This is the React Component that needs to be mounted in the Form. This ActionStateField Component will render the html input element with the type hidden.
  2. ActionStateValue : This is the React Component, which can be used to render the state value based on the selector function. Means that it requires both a function for selecting state properties and a function for rendering the value. If the value that is picked by the selector changes, then the ActionStateValue component will be rendered. This is helpful for decreasing the amount of renderings that are done more frequently than necessary.
  3. useActionStateValue : This is a React Hook that has a selector function. The difference between this hook and the ActionStateValue component is that this hook returns the value of the state in a direct manner. There are situations when this can result in inefficient re-rendering of the component that uses it.
- 4. useActionStateListener : This is a React Hook that consists of two functions: a selector function and a listener function. This is helpful if all you want to do is listen for changes in the action state, but you don't want to have to re-render the react component.
+ 4. useActionStateListener : This is a React Hook that consists of two functions: a selector function and a listener function. This is helpful if all you want to do is listen for changes in the action state, but you don't want to have to re-render the React component.
  5. Form : This is the React component that can be used as an alternative to remix Form. With this Form element, we do not need to Mount ActionStateField inside Remix Form anymore.
  * </pre>
  */
@@ -169,7 +171,7 @@ export function useRemixActionState<T extends object>(initValue?: (T | (() => T)
         }
 
         return {useActionStateListener, useActionStateValue, ActionStateValue, Form}
-    }, [$state]);
+    }, [$state, setState]);
 
     const {ActionStateValue, useActionStateValue, useActionStateListener, Form} = hooks;
     
