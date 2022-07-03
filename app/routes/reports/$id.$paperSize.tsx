@@ -10,6 +10,7 @@ import {ColumnModel, RendererModel, ReportModel} from "~/db/model";
 import invariant from "tiny-invariant";
 import {query} from "~/db/esnaad.server";
 import {filterFunction} from "~/routes/reports/filterFunction";
+import mapFunction from "~/routes/reports/mapFunction";
 
 
 function PrintPanel() {
@@ -57,7 +58,7 @@ export const loader: LoaderFunction = async ({request, params}) => {
     const qry = db.queries?.find(q => q.id === reportData.queryId);
     invariant(qry, 'Query data cannot be empty');
     const queryData = await query(qry.sqlQuery);
-    reportData.recordSet = queryData.recordSet.filter(filterFunction(reportData.columnFilters));
+    reportData.recordSet = queryData.recordSet.filter(filterFunction(reportData.columnFilters)).map(mapFunction(reportData.columns,db.renderer||[]));
     const renderer: ((RendererModel | undefined)[] | undefined) = reportData.columns.reduce((rendererString: string[], column: ColumnModel) => {
         if (rendererString.includes(column.rendererId)) {
             return rendererString;

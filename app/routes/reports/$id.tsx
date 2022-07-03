@@ -18,6 +18,7 @@ import produce from "immer";
 import {MdDelete} from "react-icons/md";
 import {filterFunction} from "~/routes/reports/filterFunction";
 import {ColumnsType} from "antd/lib/table";
+import mapFunction from "~/routes/reports/mapFunction";
 
 export const loader: LoaderFunction = async ({params}) => {
     const id = params.id;
@@ -40,7 +41,8 @@ export const loader: LoaderFunction = async ({params}) => {
         const qry = db.queries?.find(q => q.id === reportData.queryId);
         invariant(qry, 'Query data cannot be empty');
         const queryData = await query(qry.sqlQuery);
-        reportData.recordSet = queryData.recordSet.filter(filterFunction(reportData.columnFilters));
+
+        reportData.recordSet = queryData.recordSet.map(mapFunction(qry.columns,db.renderer || [])).filter(filterFunction(reportData.columnFilters));
         reportData.originalRecordSet = queryData.recordSet;
         data = reportData;
     }
@@ -58,8 +60,9 @@ type StateType =
     ReportModel
     & { providers?: { queries?: QueryModel[], renderer?: RendererModel[] }, recordSet?: any[], originalRecordSet?: any[], errors?: ReportModel };
 
-const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queries?: QueryModel[], queryId?: string, filter: ColumnFilterModel, setState: Dispatch<SetObserverAction<StateType>>, isEquals: boolean, isFreeText: boolean, originalRecordSet?: any[] }) {
-    const {filter, setState, isFreeText, isEquals, queries, queryId,  originalRecordSet} = props;
+const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queries?: QueryModel[], queryId?: string, filter: ColumnFilterModel, setState: Dispatch<SetObserverAction<StateType>>, isEquals: boolean, isFreeText: boolean, originalRecordSet?: any[],renderers:RendererModel[] }) {
+    const {filter, setState, isFreeText, isEquals, queries, queryId,  originalRecordSet,renderers} = props;
+    const query = queries?.find(qry => qry.id === queryId);
     return <Horizontal key={filter.id} mB={10}>
         <Vertical w={100} style={{flexShrink: 0}}>
             <Select value={filter.joinType} onSelect={(value: 'and' | 'or') => {
@@ -79,7 +82,7 @@ const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queri
                     draft.columnFilters[colIndex].columnKey = value;
                 }));
             }}>
-                {queries?.find(qry => qry.id === queryId)?.columns?.filter((col) => col.enabled)?.map(col => {
+                {query?.columns?.filter((col) => col.enabled)?.map(col => {
                     return <Select.Option value={col.key} key={col.key}>{col.name}</Select.Option>
                 })}
             </Select>
@@ -120,7 +123,7 @@ const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queri
                             }
                             return 0;
                         }}>
-                    {originalRecordSet?.reduce((set: Array<any>, data) => {
+                    {originalRecordSet?.map(mapFunction(query?.columns||[],renderers)).reduce((set: Array<any>, data) => {
                         const key = filter.columnKey;
                         const val = data[key];
                         if (set.indexOf(val) < 0) {
@@ -128,7 +131,7 @@ const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queri
                         }
                         return set;
                     }, []).map(val => {
-                        return <Select.Option key={val} value={val}>{val}</Select.Option>
+                        return <Select.Option key={val} value={val}><div dangerouslySetInnerHTML={{__html:val}}/></Select.Option>
                     })}
                 </Select>
             }
@@ -221,6 +224,7 @@ export default function ReportRoute() {
                                 const isEquals = filter.filterCondition === 'equals';
                                 const isFreeText = !isEquals;
                                 return <FilterRowItemRenderer queries={$state.current?.providers?.queries}
+                                                              renderers={$state.current?.providers?.renderer||[]}
                                                               queryId={$state.current?.queryId}
                                                               originalRecordSet={$state.current?.originalRecordSet}
                                                               filter={filter} setState={setState} isEquals={isEquals}
@@ -255,28 +259,8 @@ export default function ReportRoute() {
                                                   title: col.name,
                                                   dataIndex: col.key,
                                                   key: col.key,
-                                                  render : (value:any,record:any,index:number) => {
-                                                      try{
-                                                          const renderer = loaderData.providers.renderer.find(r => r.id === col.rendererId);
-                                                          if(renderer === undefined){
-                                                              return value;
-                                                          }
-                                                          invariant(renderer,'Renderer cannot be empty '+col.key+ ' '+col.rendererId);
-                                                          const rendererFunction = renderer?.rendererFunction;
-                                                          const F = new Function(`return (${rendererFunction})(...arguments)`);
-                                                          //cellData,rowData,rowIndex,gridData,columnKey,columnName,context
-                                                          const rowIndex = recordSet.indexOf(record);
-                                                          return <Vertical>
-                                                              {F.apply(null,[value,record,rowIndex,recordSet,col.key,col.name,{}])}
-                                                          </Vertical>
-                                                      }catch(err){
-                                                          console.error(err);
-                                                          return <Vertical>
-                                                              Error
-                                                          </Vertical>
-
-                                                      }
-
+                                                  render : (value:any) => {
+                                                      return <div dangerouslySetInnerHTML={{__html:value}}/>
                                                   }
                                               }
                                           });
@@ -356,11 +340,15 @@ export const action: ActionFunction = async ({request}) => {
         const qry = db.queries?.find(q => q.id === state.queryId);
         invariant(qry, 'Query data must not null');
         const data = await query(qry.sqlQuery);
-        return json({...state, errors, recordSet: data.recordSet.filter(filterFunction(state.columnFilters)),originalRecordSet:data.recordSet, columns: qry.columns.filter(c => c.enabled)});
+        return json({...state, errors, recordSet: data.recordSet.map(mapFunction(qry.columns,db.renderer||[])).filter(filterFunction(state.columnFilters)),originalRecordSet:data.recordSet, columns: qry.columns.filter(c => c.enabled)});
     }
+
     if (intent === 'applyFilter') {
+        const db = await loadDb();
+        const qry = db.queries?.find(q => q.id === state.queryId);
+        invariant(qry, 'Query data must not null');
         const columnFilters = state.columnFilters;
-        const recordSet = state.originalRecordSet.filter(filterFunction(columnFilters));
+        const recordSet = state.originalRecordSet.map(mapFunction(qry.columns,db.renderer||[])).filter(filterFunction(columnFilters));
         return json({...state, recordSet});
     }
     if (intent === 'save') {
