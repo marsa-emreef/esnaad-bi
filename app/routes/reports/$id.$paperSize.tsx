@@ -58,14 +58,15 @@ export const loader: LoaderFunction = async ({request, params}) => {
     const qry = db.queries?.find(q => q.id === reportData.queryId);
     invariant(qry, 'Query data cannot be empty');
     const queryData = await query(qry.sqlQuery);
-    reportData.recordSet = queryData.recordSet.filter(filterFunction(reportData.columnFilters)).map(mapFunction(reportData.columns,db.renderer||[]));
-    const renderer: ((RendererModel | undefined)[] | undefined) = reportData.columns.reduce((rendererString: string[], column: ColumnModel) => {
-        if (rendererString.includes(column.rendererId)) {
-            return rendererString;
+    reportData.recordSet = queryData.recordSet.map(mapFunction(reportData.columns,db.renderer||[])).filter(filterFunction(reportData.columnFilters));
+    const renderer: ((RendererModel | undefined)[] | undefined) = reportData.columns.reduce((rendererIds: string[], column: ColumnModel) => {
+        if (rendererIds.includes(column.rendererId)) {
+            return rendererIds;
         }
-        rendererString.push(column.rendererId);
-        return rendererString;
+        rendererIds.push(column.rendererId);
+        return rendererIds;
     }, []).map(rendererId => db.renderer?.find(r => r.id === rendererId));
+
     // here we need to load the data
     return json({...reportData, providers: {renderer}});
 }
@@ -134,7 +135,7 @@ function RowRenderer(props: { loaderData: LoaderData, index: number, rowContaine
             width: `calc(100% / ${loaderData?.columns?.length})`,
             flexShrink: 0,
             overflow:'hidden'
-        }}>{rowData[col.key] }</Vertical>)}
+        }} dangerouslySetInnerHTML={{__html:rowData[col.key]}}/>)}
     </Horizontal>;
 }
 
@@ -155,7 +156,7 @@ function SheetRenderer(props: { loaderData: LoaderData, index: number, setPanels
     }, [loaderData, index]);
 
     return <PaperSheet padding={'5mm'}>
-        <Vertical style={{height: '100%'}}>
+        <Vertical style={{height: '100%',fontSize:'10px'}}>
             <Vertical hAlign={'center'}>
                 THIS WILL BE THE HEADER
             </Vertical>

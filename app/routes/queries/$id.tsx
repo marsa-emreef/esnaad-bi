@@ -138,7 +138,7 @@ export default function QueriesRoute() {
                     </Label>
                     <Label label={'Description'} vAlign={'top'}>
                         <ActionStateValue selector={state => state?.description} render={(value) => {
-                            return <TextArea
+                            return <Input
                                 value={value}
                                 onChange={(event) => {
                                     setState(oldVal => {

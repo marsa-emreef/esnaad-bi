@@ -1,4 +1,4 @@
-import {memo, useEffect} from "react";
+import {memo, useEffect, useMemo} from "react";
 import {Horizontal, Vertical} from "react-hook-components";
 import {HeaderPanel} from "~/components/HeaderPanel";
 import {PlainWhitePanel} from "~/components/PlainWhitePanel";
@@ -7,7 +7,7 @@ import Label from "~/components/Label";
 import {Button, Divider, Input, Select, Table, Tooltip} from "antd";
 import type {ColumnFilterModel, ColumnModel, QueryModel, RendererModel, ReportModel} from "~/db/model";
 import type {ActionFunction, LoaderFunction} from "@remix-run/node";
-import {json} from "@remix-run/node";
+import {json, redirect} from "@remix-run/node";
 import {loadDb, persistDb} from "~/db/db.server";
 import {ShouldReloadFunction, useLoaderData} from "@remix-run/react";
 import {v4} from "uuid";
@@ -60,20 +60,24 @@ type StateType =
     ReportModel
     & { providers?: { queries?: QueryModel[], renderer?: RendererModel[] }, recordSet?: any[], originalRecordSet?: any[], errors?: ReportModel };
 
-const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queries?: QueryModel[], queryId?: string, filter: ColumnFilterModel, setState: Dispatch<SetObserverAction<StateType>>, isEquals: boolean, isFreeText: boolean, originalRecordSet?: any[],renderers:RendererModel[] }) {
-    const {filter, setState, isFreeText, isEquals, queries, queryId,  originalRecordSet,renderers} = props;
+const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queries?: QueryModel[], queryId?: string, filter: ColumnFilterModel, setState: Dispatch<SetObserverAction<StateType>>, isEquals: boolean, isFreeText: boolean, originalRecordSet?: any[],renderers:RendererModel[],rowIndex:number }) {
+    const {filter, setState, isFreeText, isEquals, queries, queryId,  originalRecordSet,renderers,rowIndex} = props;
     const query = queries?.find(qry => qry.id === queryId);
+    const columns = query?.columns || [];
+    const isFirstIndex = rowIndex === 0;
     return <Horizontal key={filter.id} mB={10}>
-        <Vertical w={100} style={{flexShrink: 0}}>
-            <Select value={filter.joinType} onSelect={(value: 'and' | 'or') => {
-                setState(produce(draft => {
-                    const colIndex = draft.columnFilters.findIndex(f => f.id === filter.id);
-                    draft.columnFilters[colIndex].joinType = value
-                }));
-            }}>
-                <Select.Option value={'and'}>And</Select.Option>
-                <Select.Option value={'or'}>Or</Select.Option>
-            </Select>
+        <Vertical w={100} style={{flexShrink: 0,backgroundColor:isFirstIndex?'rgba(0,0,0,0.05)':'none'}}>
+            {!isFirstIndex &&
+                <Select value={filter.joinType} onSelect={(value: 'and' | 'or') => {
+                    setState(produce(draft => {
+                        const colIndex = draft.columnFilters.findIndex(f => f.id === filter.id);
+                        draft.columnFilters[colIndex].joinType = value
+                    }));
+                }}>
+                    <Select.Option value={'and'}>And</Select.Option>
+                    <Select.Option value={'or'}>Or</Select.Option>
+                </Select>
+            }
         </Vertical>
         <Vertical mL={5} style={{width: 'calc((100% - 295px) / 2)', flexShrink: 0}}>
             <Select value={filter.columnKey} onSelect={(value: string) => {
@@ -82,9 +86,11 @@ const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queri
                     draft.columnFilters[colIndex].columnKey = value;
                 }));
             }}>
-                {query?.columns?.filter((col) => col.enabled)?.map(col => {
-                    return <Select.Option value={col.key} key={col.key}>{col.name}</Select.Option>
-                })}
+                {useMemo(() => {
+                    return columns.filter((col) => col.enabled)?.map(col => {
+                        return <Select.Option value={col.key} key={col.key}>{col.name}</Select.Option>
+                    })
+                },[columns])}
             </Select>
         </Vertical>
         <Vertical w={140} mL={5} style={{flexShrink: 0}}>
@@ -103,10 +109,10 @@ const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queri
             </Select>
         </Vertical>
         <Vertical mL={5} style={{width: 'calc((100% - 295px) / 2)', flexShrink: 0}}>
-            {isEquals &&
+            <Vertical style={{display:isEquals?'flex':'none'}}>
                 <Select value={filter.filterValue} disabled={!filter.columnKey} showSearch={true}
                         optionFilterProp="children"
-                        filterOption={(input, option) => ((option!.children as unknown as string) || '').includes(input)}
+                        filterOption={(input, option) => ((option!.children as unknown as string) || '').toString().includes(input)}
                         onSelect={(value: string) => {
                             setState(produce(draft => {
                                 const colIndex = draft.columnFilters.findIndex(f => f.id === filter.id);
@@ -123,25 +129,28 @@ const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queri
                             }
                             return 0;
                         }}>
-                    {originalRecordSet?.map(mapFunction(query?.columns||[],renderers)).reduce((set: Array<any>, data) => {
-                        const key = filter.columnKey;
-                        const val = data[key];
-                        if (set.indexOf(val) < 0) {
-                            set.push(val);
-                        }
-                        return set;
-                    }, []).map(val => {
-                        return <Select.Option key={val} value={val}><div dangerouslySetInnerHTML={{__html:val}}/></Select.Option>
-                    })}
+                    {useMemo(() => {
+                        return originalRecordSet?.map(mapFunction(columns,renderers)).reduce((set: Array<any>, data) => {
+                            const key = filter.columnKey;
+                            const val = data[key];
+                            if (set.indexOf(val) < 0) {
+                                set.push(val);
+                            }
+                            return set;
+                        }, []).map(val => {
+                            return <Select.Option key={val} value={val}><div dangerouslySetInnerHTML={{__html:val}}/></Select.Option>
+                        })
+                    },[columns, filter.columnKey, originalRecordSet, renderers])}
                 </Select>
-            }
-            {isFreeText && <Input value={filter.filterValue} disabled={!filter.columnKey} onChange={(val) => {
-                setState(produce((draft) => {
-                    const filterIndex = draft.columnFilters.findIndex(col => col.id === filter?.id);
-                    draft.columnFilters[filterIndex].filterValue = val.target.value;
-                }))
-            }}/>}
-
+            </Vertical>
+            <Vertical style={{display:isFreeText?'flex':'none'}}>
+                <Input value={filter.filterValue} disabled={!filter.columnKey} onChange={(val) => {
+                    setState(produce((draft) => {
+                        const filterIndex = draft.columnFilters.findIndex(col => col.id === filter?.id);
+                        draft.columnFilters[filterIndex].filterValue = val.target.value;
+                    }))
+                }}/>
+            </Vertical>
         </Vertical>
         <Vertical w={35} mL={5}>
             <Button icon={<MdDelete/>} onClick={() => {
@@ -220,7 +229,7 @@ export default function ReportRoute() {
                     <Divider orientation={"left"} style={{fontSize: '1rem'}}>Filters</Divider>
                     <ActionStateValue selector={state => state?.columnFilters} render={(columnFilters?: ColumnFilterModel[]) => {
                         return <>
-                            {columnFilters?.map((filter: ColumnFilterModel) => {
+                            {columnFilters?.map((filter: ColumnFilterModel,index:number) => {
                                 const isEquals = filter.filterCondition === 'equals';
                                 const isFreeText = !isEquals;
                                 return <FilterRowItemRenderer queries={$state.current?.providers?.queries}
@@ -228,7 +237,7 @@ export default function ReportRoute() {
                                                               queryId={$state.current?.queryId}
                                                               originalRecordSet={$state.current?.originalRecordSet}
                                                               filter={filter} setState={setState} isEquals={isEquals}
-                                                              isFreeText={isFreeText} key={filter.id}/>
+                                                              isFreeText={isFreeText} key={filter.id} rowIndex={index}/>
                             })}
                         </>
                     }}/>
@@ -270,9 +279,16 @@ export default function ReportRoute() {
                                       }}>
 
                     </ActionStateValue>
-                    <Horizontal mT={10} hAlign={'right'}>
-                        <Button htmlType={'submit'} type={"primary"} name={'intent'} value={'save'}>Save</Button>
-                    </Horizontal>
+                    <ActionStateValue selector={state => state?.id} render={(value) =>{
+                        const isNew = value === '';
+                        return <Horizontal hAlign={'right'}>
+                            {!isNew &&
+                                <Button htmlType={'submit'} name={'intent'} type={"link"} value={'delete'}
+                                        style={{marginRight: 5}}>Delete</Button>
+                            }
+                            <Button htmlType={'submit'} name={'intent'} type={"primary"} value={'save'}>{isNew ? 'Save' : 'Update'}</Button>
+                        </Horizontal>
+                    }} />
                 </PlainWhitePanel>
             </Form>
         </Vertical>
@@ -379,6 +395,12 @@ export const action: ActionFunction = async ({request}) => {
             await persistDb();
             return json({...state, ...data, errors})
         }
+    }
+    if (intent === 'delete') {
+        const db = await loadDb();
+        db.reports = db.reports?.filter(d => d.id !== state?.id);
+        await persistDb();
+        return redirect('/reports/new');
     }
     return json({...state});
 }
