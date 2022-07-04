@@ -44,46 +44,46 @@ export default function AppShell() {
                         </Horizontal>
                     </Vertical>
                     <Divider plain={true} style={{margin: 0}}/>
-                    <Vertical style={{flexGrow:1,overflow:'auto'}}>
-                    <Menu
-                        mode="inline"
-                        inlineCollapsed={!menuFold}
-                        items={[
-                            {
-                                label: <Link to={'/reports/new'}>Reports</Link>,
-                                key:'report',
-                                icon : <MdOutlineTableView/>,
-                                children: db.reports?.map(report => {
-                                    return {
-                                        label: <Link to={'/reports/' + report.id}>{report.name}</Link>,
-                                        key: report.id,
-                                    }
-                                })
-                            },
-                            {
-                                label: <Link to={'/queries/new'}>Queries</Link>,
-                                key: 'newQuery',
-                                icon: <SiMicrosoftsqlserver/>,
-                                children: db.queries?.map(query => {
-                                    return {
-                                        label: <Link to={'/queries/' + query.id}>{query.name}</Link>,
-                                        key: query.id,
-                                    }
-                                })
-                            },
-                            {
-                                label: <Link to={'/renderer/new'}>Renderers</Link>,
-                                icon: <IoLogoWebComponent/>,
-                                key: 'newRenderer',
-                                children: db.renderer?.map(renderer => {
-                                    return {
-                                        label: <Link to={'/renderer/' + renderer.id}>{renderer.name}</Link>,
-                                        key: renderer.id,
-                                    }
-                                })
-                            }
-                        ]}
-                    />
+                    <Vertical style={{flexGrow: 1, overflow: 'auto'}}>
+                        <Menu
+                            mode="inline"
+                            inlineCollapsed={!menuFold}
+                            items={[
+                                {
+                                    label: <Link to={'/reports/new'}>Reports</Link>,
+                                    key: 'report',
+                                    icon: <MdOutlineTableView/>,
+                                    children: db.reports?.map(report => {
+                                        return {
+                                            label: <Link to={'/reports/' + report.id}>{report.name}</Link>,
+                                            key: report.id,
+                                        }
+                                    })
+                                },
+                                {
+                                    label: <Link to={'/queries/new'}>Queries</Link>,
+                                    key: 'newQuery',
+                                    icon: <SiMicrosoftsqlserver/>,
+                                    children: db.queries?.map(query => {
+                                        return {
+                                            label: <Link to={'/queries/' + query.id}>{query.name}</Link>,
+                                            key: query.id,
+                                        }
+                                    })
+                                },
+                                {
+                                    label: <Link to={'/renderer/new'}>Renderers</Link>,
+                                    icon: <IoLogoWebComponent/>,
+                                    key: 'newRenderer',
+                                    children: db.renderer?.map(renderer => {
+                                        return {
+                                            label: <Link to={'/renderer/' + renderer.id}>{renderer.name}</Link>,
+                                            key: renderer.id,
+                                        }
+                                    })
+                                }
+                            ]}
+                        />
                     </Vertical>
 
                 </Vertical>

@@ -1,12 +1,10 @@
 import type {LinksFunction, LoaderFunction, MetaFunction} from "@remix-run/node";
 import {json} from "@remix-run/node";
-import {Links, LiveReload, Meta, Scripts, ScrollRestoration, useSearchParams,} from "@remix-run/react";
+import {Links, LiveReload, Meta, Outlet, Scripts, ScrollRestoration, useSearchParams,} from "@remix-run/react";
 import styles from "antd/dist/antd.css";
 import AppShell, {loader as appShellLoader} from "~/components/AppShell";
 import {ThemeProvider} from "~/components/Theme";
 import codeEditorStyles from "@uiw/react-textarea-code-editor/dist.css";
-import paperCssStyles from "paper-css/paper.css";
-import {Outlet} from "@remix-run/react";
 
 
 export const meta: MetaFunction = () => ({
@@ -24,10 +22,6 @@ export const links: LinksFunction = () => {
         {
             rel: "stylesheet",
             href: codeEditorStyles
-        },
-        {
-            rel: "stylesheet",
-            href: paperCssStyles
         }
     ]
 }
@@ -51,7 +45,7 @@ export default function App() {
             <Links/>
             {paper && <style>{`@page { size: ${paper} }`}</style>}
         </head>
-        <body className={paper || ''} style={{backgroundColor:'#EFF2F5'}}>
+        <body className={paper || ''} style={{backgroundColor: '#EFF2F5'}}>
         <ThemeProvider>
             {paper && <Outlet/>}
             {!paper && <AppShell/>}

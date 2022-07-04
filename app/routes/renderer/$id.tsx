@@ -23,7 +23,7 @@ export const loader: LoaderFunction = async ({params}) => {
             name: '',
             description: '',
             rendererFunction: '(cellData,rowData,rowIndex,gridData,columnKey,columnName,context) => cellData',
-            typeOf : 'string'
+            typeOf: 'string'
         };
         return json(data);
     }
@@ -94,7 +94,8 @@ export default function UpdateRendererRoute() {
                         <Label label={'Render Function'} vAlign={'top'}>
                             <ActionStateValue selector={state => state?.rendererFunction} render={(value) => {
                                 return <Tooltip title={$state.current?.errors?.rendererFunction}>
-                                    <CodeEditor language={'jsx'}  placeholder="(cellData,rowData,rowIndex,gridData,columnKey,columnName,context) => cellData"
+                                    <CodeEditor language={'jsx'}
+                                                placeholder="(cellData,rowData,rowIndex,gridData,columnKey,columnName,context) => cellData"
                                                 style={{
                                                     height: 200,
                                                     border: $state.current?.errors?.rendererFunction ? `1px solid red` : `1px solid #ccc`
@@ -107,20 +108,21 @@ export default function UpdateRendererRoute() {
                                                 }}
                                     />
                                 </Tooltip>
-                            }} />
+                            }}/>
 
                         </Label>
                     </LabelWidth>
-                    <ActionStateValue selector={state => state?.id} render={(value) =>{
+                    <ActionStateValue selector={state => state?.id} render={(value) => {
                         const isNew = value === '';
                         return <Horizontal hAlign={'right'}>
                             {!isNew &&
-                            <Button htmlType={'submit'} name={'intent'} type={"link"} value={'delete'}
-                                    style={{marginRight: 5}}>Delete</Button>
+                                <Button htmlType={'submit'} name={'intent'} type={"link"} value={'delete'}
+                                        style={{marginRight: 5}}>Delete</Button>
                             }
-                            <Button htmlType={'submit'} name={'intent'} type={"primary"} value={'save'}>{isNew ? 'Save' : 'Update'}</Button>
+                            <Button htmlType={'submit'} name={'intent'} type={"primary"}
+                                    value={'save'}>{isNew ? 'Save' : 'Update'}</Button>
                         </Horizontal>
-                    }} />
+                    }}/>
 
                 </PlainWhitePanel>
             </Form>
@@ -129,7 +131,7 @@ export default function UpdateRendererRoute() {
 }
 
 function validateErrors(state: RendererModel) {
-    const errors:any = {};
+    const errors: any = {};
     if (!state?.typeOf) {
         errors.typeOf = 'Type of is mandatory';
     }
@@ -143,33 +145,33 @@ function validateErrors(state: RendererModel) {
         errors.rendererFunction = 'Renderer function is mandatory'
     }
     const hasErrors = Object.entries(errors).some(err => err);
-    return {hasErrors,errors};
+    return {hasErrors, errors};
 }
 
 export const action: ActionFunction = async ({request}) => {
     const formData = await request.formData();
     const state = await actionStateFunction<RendererModel>({formData});
-    invariant(state,'State cannot be empty');
+    invariant(state, 'State cannot be empty');
     const intent = formData.get('intent');
     if (intent === 'save') {
-        const {hasErrors,errors} = validateErrors(state);
+        const {hasErrors, errors} = validateErrors(state);
         if (hasErrors) {
             return json({...state, errors});
         }
         const db = await loadDb();
         const isNew = state?.id === '';
         invariant(state?.name, 'Name cannot be empty');
-        let renderer:RendererModel|undefined = {
-            id : v4(),
-            name : state?.name,
-            description : state?.description,
-            rendererFunction : state?.rendererFunction,
-            typeOf : state?.typeOf
+        let renderer: RendererModel | undefined = {
+            id: v4(),
+            name: state?.name,
+            description: state?.description,
+            rendererFunction: state?.rendererFunction,
+            typeOf: state?.typeOf
         }
-        if(isNew){
+        if (isNew) {
             db.renderer = db.renderer || [];
             db.renderer?.push(renderer);
-        }else{
+        } else {
             renderer = db.renderer?.find(d => d.id === state?.id);
             invariant(renderer, 'Renderer cannot be empty');
             renderer.rendererFunction = state.rendererFunction;
@@ -184,5 +186,5 @@ export const action: ActionFunction = async ({request}) => {
         await persistDb();
         return redirect('/renderer/new');
     }
-    return json({...state, errors:{}});
+    return json({...state, errors: {}});
 }

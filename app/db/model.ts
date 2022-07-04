@@ -9,7 +9,7 @@ export interface RendererModel {
     name: string,
     description: string,
     rendererFunction: string,
-    typeOf : 'boolean' | 'number' | 'string' | 'date' | 'buffer' | 'object' | 'null' | 'any'
+    typeOf: 'boolean' | 'number' | 'string' | 'date' | 'buffer' | 'object' | 'null' | 'any'
 }
 
 export interface QueryModel {
@@ -26,8 +26,8 @@ export interface ColumnModel {
     name: string,
     rendererId: string, // this is the reference to RendererModel
     enabled: boolean,
-    active : boolean,
-    width : number | string
+    active: boolean,
+    width: number | string
 }
 
 // THIS IS REPORT MODEL
@@ -48,7 +48,7 @@ export interface ColumnFilterModel extends ColumnFilterGroupModel {
 }
 
 export interface ColumnFilterGroupModel {
-    id : string,
+    id: string,
     joinType: 'and' | 'or'
     children: ColumnFilterModel[]
 }

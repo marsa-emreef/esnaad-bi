@@ -1,10 +1,11 @@
-import {memo, SetStateAction, useEffect, useMemo, useState} from "react";
+import type { SetStateAction} from "react";
+import {memo, useEffect, useMemo, useState} from "react";
 import {Horizontal, Vertical} from "react-hook-components";
 import {HeaderPanel} from "~/components/HeaderPanel";
 import {PlainWhitePanel} from "~/components/PlainWhitePanel";
 import {actionStateFunction, useRemixActionState} from "~/remix-hook-actionstate";
 import Label from "~/components/Label";
-import {Button, Checkbox, Collapse, Input, Select, Switch, Table, Tooltip} from "antd";
+import {Button, Checkbox, Collapse, Input, Select, Table, Tooltip} from "antd";
 import type {ColumnFilterModel, ColumnModel, QueryModel, RendererModel, ReportModel} from "~/db/model";
 import type {ActionFunction, LoaderFunction} from "@remix-run/node";
 import {json, redirect} from "@remix-run/node";
@@ -16,7 +17,13 @@ import invariant from "tiny-invariant";
 import {query} from "~/db/esnaad.server";
 import type {Dispatch, SetObserverAction} from "react-hook-useobserver";
 import produce from "immer";
-import {MdDelete, MdKeyboardArrowLeft, MdKeyboardArrowRight,MdKeyboardArrowUp,MdKeyboardArrowDown} from "react-icons/md";
+import {
+    MdDelete,
+    MdKeyboardArrowDown,
+    MdKeyboardArrowLeft,
+    MdKeyboardArrowRight,
+    MdKeyboardArrowUp
+} from "react-icons/md";
 import {filterFunction} from "~/routes/reports/filterFunction";
 import type {ColumnsType} from "antd/lib/table";
 import mapFunction from "~/routes/reports/mapFunction";
@@ -207,41 +214,41 @@ function ColumnsOrderAndSort(props: { columns: ColumnModel[], setState: Dispatch
                             <Button onClick={() => {
                                 setState(produce(old => {
                                     const colIndex = old.columns.findIndex(c => c.key === col.key);
-                                    const {prevActiveIndex,nextActiveIndex} = old.columns.reduce((res,col,index) => {
-                                        if(col.active && index < res.currentIndex){
+                                    const {nextActiveIndex} = old.columns.reduce((res, col, index) => {
+                                        if (col.active && index < res.currentIndex) {
                                             res.prevActiveIndex = index;
                                         }
-                                        if(col.active && index > res.currentIndex && res.nextActiveIndex === 0){
+                                        if (col.active && index > res.currentIndex && res.nextActiveIndex === 0) {
                                             res.nextActiveIndex = index;
                                         }
                                         return res;
-                                    },{
-                                        currentIndex : colIndex,
-                                        prevActiveIndex : 0,
-                                        nextActiveIndex : 0
+                                    }, {
+                                        currentIndex: colIndex,
+                                        prevActiveIndex: 0,
+                                        nextActiveIndex: 0
                                     });
                                     old.columns.splice(colIndex, 1);
                                     old.columns.splice(nextActiveIndex, 0, col);
                                 }));
-                            }} icon={<MdKeyboardArrowDown style={{fontSize:'1.5rem'}}/>}/>
+                            }} icon={<MdKeyboardArrowDown style={{fontSize: '1.5rem'}}/>}/>
                         </Vertical>
                         <Vertical style={{opacity: isFirstIndex ? 0 : 1}}>
-                            <Button icon={<MdKeyboardArrowUp style={{fontSize:'1.5rem'}}/>} onClick={() => {
+                            <Button icon={<MdKeyboardArrowUp style={{fontSize: '1.5rem'}}/>} onClick={() => {
 
                                 setState(produce(old => {
                                     const colIndex = old.columns.findIndex(c => c.key === col.key);
-                                    const {prevActiveIndex,nextActiveIndex} = old.columns.reduce((res,col,index) => {
-                                        if(col.active && index < res.currentIndex){
+                                    const {prevActiveIndex} = old.columns.reduce((res, col, index) => {
+                                        if (col.active && index < res.currentIndex) {
                                             res.prevActiveIndex = index;
                                         }
-                                        if(col.active && index > res.currentIndex && res.nextActiveIndex === 0){
+                                        if (col.active && index > res.currentIndex && res.nextActiveIndex === 0) {
                                             res.nextActiveIndex = index;
                                         }
                                         return res;
-                                    },{
-                                        currentIndex : colIndex,
-                                        prevActiveIndex : 0,
-                                        nextActiveIndex : 0
+                                    }, {
+                                        currentIndex: colIndex,
+                                        prevActiveIndex: 0,
+                                        nextActiveIndex: 0
                                     });
                                     old.columns.splice(colIndex, 1);
                                     old.columns.splice(prevActiveIndex, 0, col);

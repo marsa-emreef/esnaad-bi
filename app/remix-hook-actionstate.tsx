@@ -1,7 +1,7 @@
 import React, {createContext, useCallback, useContext, useEffect, useMemo, useRef, useState} from "react";
 import type {Observer} from "react-hook-useobserver";
-import { ObserverValue, useObserver} from "react-hook-useobserver";
-import type { FormProps} from "@remix-run/react";
+import {ObserverValue, useObserver} from "react-hook-useobserver";
+import type {FormProps} from "@remix-run/react";
 import {Form as RemixForm, useActionData} from "@remix-run/react";
 
 /**
@@ -70,7 +70,7 @@ const FormContext = createContext<any>([]);
 /**
  * Hooks to get the formState by using the remix action state
  */
-export function useRemixActionStateInForm<T>(): [Observer<T|undefined>, React.Dispatch<React.SetStateAction<T>>, {
+export function useRemixActionStateInForm<T>(): [Observer<T | undefined>, React.Dispatch<React.SetStateAction<T>>, {
     useActionStateListener: UseActionStateListener<T>,
     useActionStateValue: UseActionStateValue<T>,
     ActionStateValue: ActionStateValueFC<T>
@@ -174,7 +174,7 @@ export function useRemixActionState<T extends object>(initValue?: (T | (() => T)
     }, [$state, setState]);
 
     const {ActionStateValue, useActionStateValue, useActionStateListener, Form} = hooks;
-    
+
     return [$state, setState as React.Dispatch<React.SetStateAction<T>>, {
         ActionStateField,
         useActionStateListener,
