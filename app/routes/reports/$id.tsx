@@ -1,4 +1,4 @@
-import {memo, SetStateAction, useEffect, useMemo} from "react";
+import {memo, SetStateAction, useEffect, useMemo, useState} from "react";
 import {Horizontal, Vertical} from "react-hook-components";
 import {HeaderPanel} from "~/components/HeaderPanel";
 import {PlainWhitePanel} from "~/components/PlainWhitePanel";
@@ -15,9 +15,8 @@ import {v4} from "uuid";
 import invariant from "tiny-invariant";
 import {query} from "~/db/esnaad.server";
 import type {Dispatch, SetObserverAction} from "react-hook-useobserver";
-import {useObserver,ObserverValue} from "react-hook-useobserver";
 import produce from "immer";
-import {MdDelete, MdKeyboardArrowLeft, MdKeyboardArrowRight} from "react-icons/md";
+import {MdDelete, MdKeyboardArrowLeft, MdKeyboardArrowRight,MdKeyboardArrowUp,MdKeyboardArrowDown} from "react-icons/md";
 import {filterFunction} from "~/routes/reports/filterFunction";
 import type {ColumnsType} from "antd/lib/table";
 import mapFunction from "~/routes/reports/mapFunction";
@@ -171,67 +170,145 @@ const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queri
     </Horizontal>;
 });
 
-function ColumnsOrderAndSort(props: { columns: ColumnModel[],setState: Dispatch<SetStateAction<StateType>> }) {
-    const {columns,setState} = props;
-    const [$selectedRightColumns, setSelectedRightColumns] = useObserver<string[]>([]);
-    const [$selectedLeftColumns, setSelectedLeftColumns] = useObserver<string[]>([]);
+function ColumnsOrderAndSort(props: { columns: ColumnModel[], setState: Dispatch<SetStateAction<StateType>> }) {
+
+    const {columns, setState} = props;
+    const [selectedRightColumns, setSelectedRightColumns] = useState<string[]>([]);
+    const [selectedLeftColumns, setSelectedLeftColumns] = useState<string[]>([]);
+
     return <Horizontal>
-        <Vertical w={'50%'} style={{border: '1px solid lightgrey', padding: '5px', paddingTop: '10px'}} m={5} r={2}
+        <Vertical style={{border: '1px solid lightgrey', padding: '5px', paddingTop: '15px', flexGrow: 1}} m={5}
+                  r={2}
                   position={'relative'}>
             <Vertical top={-18} left={10} p={5} position={'absolute'} backgroundColor={'#fff'} style={{zIndex: 1}}>Active
                 Columns</Vertical>
             <Vertical>
-                {columns.filter(c => c.active).map((col, index) => {
-                    return <Horizontal key={col.key} style={{border: '1px solid lightgrey', padding: '3px 5px'}} m={5}
-                                       r={2}>
-                        <Checkbox>{col.name}</Checkbox>
+                {columns.filter(c => c.active).map((col, index, source) => {
+                    const isFirstIndex = index === 0;
+                    const isLastIndex = index === source.length - 1;
+                    return <Horizontal key={col.key} mB={5}>
+                        <Vertical style={{border: '1px solid lightgrey', padding: '3px 5px', flexGrow: 1}} mR={5}
+                                  r={2}>
+                            <Checkbox checked={selectedLeftColumns.includes(col.key)}
+                                      onChange={(e) => {
+                                          setSelectedLeftColumns(old => {
+                                              if (e.target.checked && !old.includes(col.key)) {
+                                                  return [...old, col.key];
+                                              }
+                                              if (!e.target.checked && old.includes(col.key)) {
+                                                  return old.filter(c => c !== col.key);
+                                              }
+                                              return old;
+                                          });
+                                      }}
+                            >{col.name}</Checkbox>
+                        </Vertical>
+                        <Vertical style={{opacity: isLastIndex ? 0 : 1}} mR={5}>
+                            <Button onClick={() => {
+                                setState(produce(old => {
+                                    const colIndex = old.columns.findIndex(c => c.key === col.key);
+                                    const {prevActiveIndex,nextActiveIndex} = old.columns.reduce((res,col,index) => {
+                                        if(col.active && index < res.currentIndex){
+                                            res.prevActiveIndex = index;
+                                        }
+                                        if(col.active && index > res.currentIndex && res.nextActiveIndex === 0){
+                                            res.nextActiveIndex = index;
+                                        }
+                                        return res;
+                                    },{
+                                        currentIndex : colIndex,
+                                        prevActiveIndex : 0,
+                                        nextActiveIndex : 0
+                                    });
+                                    old.columns.splice(colIndex, 1);
+                                    old.columns.splice(nextActiveIndex, 0, col);
+                                }));
+                            }} icon={<MdKeyboardArrowDown style={{fontSize:'1.5rem'}}/>}/>
+                        </Vertical>
+                        <Vertical style={{opacity: isFirstIndex ? 0 : 1}}>
+                            <Button icon={<MdKeyboardArrowUp style={{fontSize:'1.5rem'}}/>} onClick={() => {
+
+                                setState(produce(old => {
+                                    const colIndex = old.columns.findIndex(c => c.key === col.key);
+                                    const {prevActiveIndex,nextActiveIndex} = old.columns.reduce((res,col,index) => {
+                                        if(col.active && index < res.currentIndex){
+                                            res.prevActiveIndex = index;
+                                        }
+                                        if(col.active && index > res.currentIndex && res.nextActiveIndex === 0){
+                                            res.nextActiveIndex = index;
+                                        }
+                                        return res;
+                                    },{
+                                        currentIndex : colIndex,
+                                        prevActiveIndex : 0,
+                                        nextActiveIndex : 0
+                                    });
+                                    old.columns.splice(colIndex, 1);
+                                    old.columns.splice(prevActiveIndex, 0, col);
+                                }));
+                            }}/>
+                        </Vertical>
                     </Horizontal>
                 })}
             </Vertical>
         </Vertical>
+
+
         <Vertical vAlign={'center'}>
-            <ObserverValue observers={$selectedRightColumns} render={() => {
-                return <Button disabled={$selectedRightColumns.current.length === 0} style={{marginBottom: 5}} icon={<MdKeyboardArrowLeft style={{fontSize: '1.5rem'}}/>}
+            <Button disabled={selectedRightColumns.length === 0} style={{marginBottom: 5}}
+                    icon={<MdKeyboardArrowLeft style={{fontSize: '1.5rem'}}/>}
                     onClick={() => {
                         setState(produce(state => {
-                            for (const colKey of $selectedRightColumns.current) {
+                            for (const colKey of selectedRightColumns) {
                                 const index = state.columns.findIndex(col => col.key === colKey);
                                 state.columns[index].active = true;
                             }
-                            setSelectedRightColumns([]);
                         }));
+                        setSelectedRightColumns([]);
                     }}
-                />
-            }}/>
+            />
+            <Button disabled={selectedLeftColumns.length === 0}
+                    icon={<MdKeyboardArrowRight style={{fontSize: '1.5rem'}}
+                                                onClick={() => {
+                                                    setState(produce(state => {
+                                                        for (const colKey of selectedLeftColumns) {
+                                                            const index = state.columns.findIndex(col => col.key === colKey);
+                                                            state.columns[index].active = false;
+                                                        }
+                                                    }));
+                                                    setSelectedLeftColumns([]);
+                                                }}
+                    />}/>
 
-            <Button icon={<MdKeyboardArrowRight style={{fontSize: '1.5rem'}}/>}/>
+
         </Vertical>
 
-        <ObserverValue observers={$selectedRightColumns} render={() => {
-            return <Vertical w={'50%'} style={{border: '1px solid lightgrey', padding: '5px', paddingTop: '10px'}} m={5} r={2}
-                             position={'relative'}>
-                <Vertical top={-18} left={10} p={5} position={'absolute'} backgroundColor={'#fff'} style={{zIndex: 1}}>In
-                    Active Columns</Vertical>
-                {columns.filter(c => !c.active).map(col => {
-                    return <Horizontal key={col.key}  style={{border: '1px solid lightgrey', padding: '3px 5px'}} m={5}
-                                       r={2}>
-                        <Checkbox checked={$selectedRightColumns.current.includes(col.key) } onChange={(e) => {
-                            setSelectedRightColumns((old:string[]) => {
-                                if(e.target.checked && !old.includes(col.key)){
-                                    return [...old,col.key];
+        <Vertical style={{border: '1px solid lightgrey', padding: '5px', paddingTop: '10px', width: 200}} m={5}
+                  r={2}
+                  position={'relative'}>
+            <Vertical top={-18} left={10} p={5} position={'absolute'} backgroundColor={'#fff'} style={{zIndex: 1}}>In
+                Active Columns</Vertical>
 
-                                }
-                                if((!e.target.checked) && old.includes(col.key)){
-                                    return old.filter(key => key !== col.key)
-                                }
-                                return old;
-                            })
-                        }}>{col.name}</Checkbox>
-                    </Horizontal>
-                })}
-            </Vertical>
-        }}/>
 
+            {columns.filter(c => !c.active).map(col => {
+                return <Horizontal key={col.key} style={{border: '1px solid lightgrey', padding: '3px 5px'}} m={5}
+                                   r={2}>
+                    <Checkbox checked={selectedRightColumns.includes(col.key)} onChange={(e) => {
+                        setSelectedRightColumns((old: string[]) => {
+                            if (e.target.checked && !old.includes(col.key)) {
+                                return [...old, col.key];
+
+                            }
+                            if ((!e.target.checked) && old.includes(col.key)) {
+                                return old.filter(key => key !== col.key)
+                            }
+                            return old;
+                        })
+                    }}>{col.name}</Checkbox>
+                </Horizontal>
+            })}
+
+        </Vertical>
     </Horizontal>;
 }
 
@@ -252,7 +329,7 @@ export default function ReportRoute() {
             return <HeaderPanel title={value}/>
         }}/>
 
-        <Vertical p={20} style={{flexGrow: 1}}>
+        <Vertical p={20} style={{flexGrow: 1}} overflow={'auto'}>
             <Form method={'post'}>
                 <PlainWhitePanel>
                     <Label label={'Name'}>
@@ -346,26 +423,8 @@ export default function ReportRoute() {
                                       }}/>
 
                     <ActionStateValue selector={state => state?.columns} render={(columns: ColumnModel[]) => {
-                        const activeColumnsLength = columns.filter(c => c.active).length;
-                        return <Collapse defaultActiveKey={['1', '2']} ghost>
-                            <Collapse.Panel header={`There were ${activeColumnsLength} columns selected.`}
-                                            key={1}>
-
-                                <Horizontal style={{flexWrap: "wrap"}}>
-                                    {columns.filter(c => c.enabled).map(col => {
-                                        return <Vertical key={col.key} mR={5} mB={5}>
-                                            <Switch checkedChildren={col.name} checked={col.active}
-                                                    unCheckedChildren={col.name} onChange={(checked) => {
-                                                setState(produce(oldVal => {
-                                                    const colIndex = oldVal.columns.findIndex(c => c.key === col.key);
-                                                    oldVal.columns[colIndex].active = checked;
-                                                }));
-                                            }}/>
-                                        </Vertical>
-                                    })}
-                                </Horizontal>
-                            </Collapse.Panel>
-                            <Collapse.Panel key={2} header={'Columns Order & Sort'}>
+                        return <Collapse defaultActiveKey={['1']} ghost>
+                            <Collapse.Panel key={1} header={'Columns Order & Sort'}>
                                 <ColumnsOrderAndSort columns={columns} setState={setState}/>
                             </Collapse.Panel>
                         </Collapse>

@@ -2,7 +2,7 @@ import {Horizontal, Vertical} from "react-hook-components";
 import {useLoaderData, useLocation, useParams, useSearchParams} from "@remix-run/react";
 import {Button} from "antd";
 import type {Dispatch, MutableRefObject, ReactElement, SetStateAction} from "react";
-import { useContext, useEffect, useRef, useState} from "react";
+import {memo, useContext, useEffect, useRef, useState} from "react";
 import {ThemeContext} from "~/components/Theme";
 import PaperSheet from "~/components/PaperSheet";
 import type { LoaderFunction} from "@remix-run/node";
@@ -55,13 +55,14 @@ export const loader: LoaderFunction = async ({request, params}) => {
     }
     const id = params.id;
     const db = await loadDb();
-    const reportData: ((ReportModel & { recordSet?: any[] }) | undefined) = db.reports?.find(r => r.id === id);
-    invariant(reportData, 'Report data cannot be empty');
-    const qry = db.queries?.find(q => q.id === reportData.queryId);
-    invariant(qry, 'Query data cannot be empty');
-    const queryData = await query(qry.sqlQuery);
-    reportData.recordSet = queryData.recordSet.map(mapFunction(reportData.columns,db.renderer||[])).filter(filterFunction(reportData.columnFilters));
-    const renderer: ((RendererModel | undefined)[] | undefined) = reportData.columns.reduce((rendererIds: string[], column: ColumnModel) => {
+    const loaderData: ((ReportModel & { recordSet?: any[] }) | undefined) = db.reports?.find(r => r.id === id);
+    invariant(loaderData, 'Report data cannot be empty');
+    const dbQuery = db.queries?.find(q => q.id === loaderData.queryId);
+    invariant(dbQuery, 'Query data cannot be empty');
+    const {recordSet} = await query(dbQuery.sqlQuery);
+
+    loaderData.recordSet = recordSet.map(mapFunction(dbQuery.columns,db.renderer||[])).filter(filterFunction(loaderData.columnFilters));
+    const renderer: ((RendererModel | undefined)[] | undefined) = loaderData.columns.reduce((rendererIds: string[], column: ColumnModel) => {
         if (rendererIds.includes(column.rendererId)) {
             return rendererIds;
         }
@@ -70,7 +71,7 @@ export const loader: LoaderFunction = async ({request, params}) => {
     }, []).map(rendererId => db.renderer?.find(r => r.id === rendererId));
 
     // here we need to load the data
-    return json({...reportData, providers: {renderer}});
+    return json({...loaderData, providers: {renderer}});
 }
 
 /*
@@ -91,7 +92,7 @@ function ReportPanel() {
             const panel = <SheetRenderer index={0} setPanels={setPanels} loaderData={loaderData}/>
             return [...oldPanel, panel];
         });
-    }, [loaderData]);
+    }, []);
     return <>
         {panels.map((panel, index) => {
             return <Vertical key={index}>
@@ -102,11 +103,12 @@ function ReportPanel() {
     </>
 }
 
-function RowRenderer(props: { loaderData: LoaderData, index: number, rowContainerRemainingHeightRef: MutableRefObject<number>, setRows: Dispatch<SetStateAction<any>>, setPanels: SetPanels }) {
+const RowRenderer = memo(function RowRenderer(props: { loaderData: LoaderData, index: number, rowContainerRemainingHeightRef: MutableRefObject<number>, setRows: Dispatch<SetStateAction<any>>, setPanels: SetPanels }) {
     const {index,setPanels,setRows,rowContainerRemainingHeightRef,loaderData} = props;
     const recordSet:any[]|undefined = loaderData?.recordSet;
     invariant(recordSet,'RecordSet cannot be null');
     const rowData: any = recordSet[index];
+    invariant(rowData,'RowData cannot be null');
     const rowRef = useRef<HTMLDivElement>(null);
     const recordSetLength = recordSet.length;
     useEffect(() => {
@@ -132,7 +134,7 @@ function RowRenderer(props: { loaderData: LoaderData, index: number, rowContaine
             }
 
         }
-    }, [index, loaderData, recordSetLength, rowContainerRemainingHeightRef, setPanels, setRows]);
+    }, []);
     return <Horizontal ref={rowRef} style={{borderBottom:'1px solid rgba(0,0,0,0.3)'}}>
         {loaderData?.columns?.map(col => <Vertical key={col.key} style={{
             width: `calc(100% / ${loaderData?.columns?.length})`,
@@ -140,7 +142,7 @@ function RowRenderer(props: { loaderData: LoaderData, index: number, rowContaine
             overflow:'hidden'
         }} dangerouslySetInnerHTML={{__html:rowData[col.key]}}/>)}
     </Horizontal>;
-}
+});
 
 type LoaderData = (ReportModel & { recordSet?: any[] }) | undefined;
 type SetPanels = (value: (((prevState: ReactElement[]) => ReactElement[]) | ReactElement[])) => void;
@@ -153,10 +155,13 @@ function SheetRenderer(props: { loaderData: LoaderData, index: number, setPanels
 
     useEffect(() => {
         rowContainerRemainingHeightRef.current = containerRef.current?.getBoundingClientRect().height || 0;
-        setRows([<RowRenderer loaderData={loaderData} index={index}
-                              rowContainerRemainingHeightRef={rowContainerRemainingHeightRef} setRows={setRows}
-                              setPanels={setPanels} key={index}/>])
-    }, [loaderData, index, setPanels]);
+        if(loaderData?.recordSet?.length){
+            setRows([<RowRenderer loaderData={loaderData} index={index}
+                                  rowContainerRemainingHeightRef={rowContainerRemainingHeightRef} setRows={setRows}
+                                  setPanels={setPanels} key={index}/>])
+        }
+
+    }, []);
 
     return <PaperSheet padding={'5mm'}>
         <Vertical style={{height: '100%',fontSize:'10px'}}>
