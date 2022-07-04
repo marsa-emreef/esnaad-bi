@@ -25,7 +25,9 @@ export interface ColumnModel {
     type: string,
     name: string,
     rendererId: string, // this is the reference to RendererModel
-    enabled: boolean
+    enabled: boolean,
+    active : boolean,
+    width : number | string
 }
 
 // THIS IS REPORT MODEL

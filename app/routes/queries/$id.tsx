@@ -171,7 +171,7 @@ export default function QueriesRoute() {
                     </Horizontal>
                     <Divider orientation={"left"}>Column Mapping</Divider>
                     <ActionStateValue selector={state => state?.columns} render={(value) => {
-                        return <Table scroll={{x:true}} columns={[
+                        return <Table scroll={{x: true}} columns={[
                             {
                                 title: 'Enabled',
                                 dataIndex: 'enabled',
@@ -203,7 +203,7 @@ export default function QueriesRoute() {
                                 }
                             }
                         ]} dataSource={value}/>
-                    }} />
+                    }}/>
                     <ActionStateValue selector={state => state?.id} render={value => {
                         const isNew = value === '';
                         return <Horizontal hAlign={'right'}>
@@ -240,6 +240,8 @@ export const action: ActionFunction = async ({request}) => {
                 }
                 return {
                     enabled: false,
+                    active: false,
+                    width: '',
                     name: '',
                     key: col.key,
                     type: col.type,
@@ -259,19 +261,19 @@ export const action: ActionFunction = async ({request}) => {
         }
         const isNew = state.id === '';
         const db = await loadDb();
-        if(isNew){
-            const data:QueryModel = {
-                id : v4(),
-                columns : state.columns,
-                sqlQuery : state.sqlQuery,
-                name : state.name,
-                description : state.description
+        if (isNew) {
+            const data: QueryModel = {
+                id: v4(),
+                columns: state.columns,
+                sqlQuery: state.sqlQuery,
+                name: state.name,
+                description: state.description
             }
             db.queries = db.queries || [];
             db.queries.push(data);
             await persistDb();
-            return redirect('/queries/'+data.id);
-        }else{
+            return redirect('/queries/' + data.id);
+        } else {
             const query = db.queries?.find(q => q.id === state?.id);
             invariant(query, 'Query object must not null');
             invariant(state?.name, 'Name is a must');
@@ -303,7 +305,15 @@ function validateErrors(state: QueryModel) {
         errors.sqlQuery = 'SQL Query is required';
     }
     state.columns.forEach(col => {
-        const colError: ColumnModel = {name: '', enabled: false, rendererId: '', key: '', type: ''};
+        const colError: ColumnModel = {
+            name: '',
+            enabled: false,
+            rendererId: '',
+            key: '',
+            type: '',
+            active: false,
+            width: ''
+        };
         if (col.enabled) {
             if (!col.name) {
                 colError.name = 'Name is required';
@@ -324,5 +334,5 @@ function validateErrors(state: QueryModel) {
         }
         return value;
     });
-    return {errors,hasErrors};
+    return {errors, hasErrors};
 }

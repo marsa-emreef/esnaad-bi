@@ -26,7 +26,7 @@ function PrintPanel() {
             zIndex: 1,
             boxShadow: '0 0 5px -2px rgba(0,0,0,0.3)'
         }}>
-            <Button type={"primary"} onClick={_ => {
+            <Button type={"primary"}  onClick={_ => {
                 // @ts-ignore
                 const frame = window.frames['printFrame'];
                 frame?.focus();

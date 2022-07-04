@@ -1,25 +1,27 @@
-import {memo, useEffect, useMemo} from "react";
+import {memo, SetStateAction, useEffect, useMemo} from "react";
 import {Horizontal, Vertical} from "react-hook-components";
 import {HeaderPanel} from "~/components/HeaderPanel";
 import {PlainWhitePanel} from "~/components/PlainWhitePanel";
 import {actionStateFunction, useRemixActionState} from "~/remix-hook-actionstate";
 import Label from "~/components/Label";
-import {Button, Collapse, Input, Select, Table, Tooltip} from "antd";
+import {Button, Checkbox, Collapse, Input, Select, Switch, Table, Tooltip} from "antd";
 import type {ColumnFilterModel, ColumnModel, QueryModel, RendererModel, ReportModel} from "~/db/model";
 import type {ActionFunction, LoaderFunction} from "@remix-run/node";
 import {json, redirect} from "@remix-run/node";
 import {loadDb, persistDb} from "~/db/db.server";
 import type {ShouldReloadFunction} from "@remix-run/react";
-import { useLoaderData} from "@remix-run/react";
+import {useLoaderData} from "@remix-run/react";
 import {v4} from "uuid";
 import invariant from "tiny-invariant";
 import {query} from "~/db/esnaad.server";
 import type {Dispatch, SetObserverAction} from "react-hook-useobserver";
+import {useObserver,ObserverValue} from "react-hook-useobserver";
 import produce from "immer";
-import {MdDelete} from "react-icons/md";
+import {MdDelete, MdKeyboardArrowLeft, MdKeyboardArrowRight} from "react-icons/md";
 import {filterFunction} from "~/routes/reports/filterFunction";
 import type {ColumnsType} from "antd/lib/table";
 import mapFunction from "~/routes/reports/mapFunction";
+
 
 export const loader: LoaderFunction = async ({params}) => {
     const id = params.id;
@@ -45,6 +47,7 @@ export const loader: LoaderFunction = async ({params}) => {
 
         reportData.recordSet = queryData.recordSet.map(mapFunction(qry.columns, db.renderer || [])).filter(filterFunction(reportData.columnFilters));
         reportData.originalRecordSet = queryData.recordSet;
+
         data = reportData;
     }
     return json({
@@ -61,7 +64,7 @@ type StateType =
     ReportModel
     & { providers?: { queries?: QueryModel[], renderer?: RendererModel[] }, recordSet?: any[], originalRecordSet?: any[], errors?: ReportModel };
 
-const emptyArray:any = [];
+const emptyArray: any = [];
 
 const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queries?: QueryModel[], queryId?: string, filter: ColumnFilterModel, setState: Dispatch<SetObserverAction<StateType>>, isEquals: boolean, isFreeText: boolean, originalRecordSet?: any[], renderers: RendererModel[], rowIndex: number }) {
     const {filter, setState, isFreeText, isEquals, queries, queryId, originalRecordSet, renderers, rowIndex} = props;
@@ -90,7 +93,7 @@ const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queri
                 }));
             }}>
                 {useMemo(() => {
-                    return columns.filter((col:ColumnModel) => col.enabled)?.map((col:ColumnModel) => {
+                    return columns.filter((col: ColumnModel) => col.enabled)?.map((col: ColumnModel) => {
                         return <Select.Option value={col.key} key={col.key}>{col.name}</Select.Option>
                     })
                 }, [columns])}
@@ -168,6 +171,70 @@ const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queri
     </Horizontal>;
 });
 
+function ColumnsOrderAndSort(props: { columns: ColumnModel[],setState: Dispatch<SetStateAction<StateType>> }) {
+    const {columns,setState} = props;
+    const [$selectedRightColumns, setSelectedRightColumns] = useObserver<string[]>([]);
+    const [$selectedLeftColumns, setSelectedLeftColumns] = useObserver<string[]>([]);
+    return <Horizontal>
+        <Vertical w={'50%'} style={{border: '1px solid lightgrey', padding: '5px', paddingTop: '10px'}} m={5} r={2}
+                  position={'relative'}>
+            <Vertical top={-18} left={10} p={5} position={'absolute'} backgroundColor={'#fff'} style={{zIndex: 1}}>Active
+                Columns</Vertical>
+            <Vertical>
+                {columns.filter(c => c.active).map((col, index) => {
+                    return <Horizontal key={col.key} style={{border: '1px solid lightgrey', padding: '3px 5px'}} m={5}
+                                       r={2}>
+                        <Checkbox>{col.name}</Checkbox>
+                    </Horizontal>
+                })}
+            </Vertical>
+        </Vertical>
+        <Vertical vAlign={'center'}>
+            <ObserverValue observers={$selectedRightColumns} render={() => {
+                return <Button disabled={$selectedRightColumns.current.length === 0} style={{marginBottom: 5}} icon={<MdKeyboardArrowLeft style={{fontSize: '1.5rem'}}/>}
+                    onClick={() => {
+                        setState(produce(state => {
+                            for (const colKey of $selectedRightColumns.current) {
+                                const index = state.columns.findIndex(col => col.key === colKey);
+                                state.columns[index].active = true;
+                            }
+                            setSelectedRightColumns([]);
+                        }));
+                    }}
+                />
+            }}/>
+
+            <Button icon={<MdKeyboardArrowRight style={{fontSize: '1.5rem'}}/>}/>
+        </Vertical>
+
+        <ObserverValue observers={$selectedRightColumns} render={() => {
+            return <Vertical w={'50%'} style={{border: '1px solid lightgrey', padding: '5px', paddingTop: '10px'}} m={5} r={2}
+                             position={'relative'}>
+                <Vertical top={-18} left={10} p={5} position={'absolute'} backgroundColor={'#fff'} style={{zIndex: 1}}>In
+                    Active Columns</Vertical>
+                {columns.filter(c => !c.active).map(col => {
+                    return <Horizontal key={col.key}  style={{border: '1px solid lightgrey', padding: '3px 5px'}} m={5}
+                                       r={2}>
+                        <Checkbox checked={$selectedRightColumns.current.includes(col.key) } onChange={(e) => {
+                            setSelectedRightColumns((old:string[]) => {
+                                if(e.target.checked && !old.includes(col.key)){
+                                    return [...old,col.key];
+
+                                }
+                                if((!e.target.checked) && old.includes(col.key)){
+                                    return old.filter(key => key !== col.key)
+                                }
+                                return old;
+                            })
+                        }}>{col.name}</Checkbox>
+                    </Horizontal>
+                })}
+            </Vertical>
+        }}/>
+
+    </Horizontal>;
+}
+
 export default function ReportRoute() {
     const loaderData = useLoaderData<ReportModel & { providers: { queries: QueryModel[], renderer: RendererModel[] } }>();
     const [$state, setState, {
@@ -185,7 +252,7 @@ export default function ReportRoute() {
             return <HeaderPanel title={value}/>
         }}/>
 
-        <Vertical p={20} style={{flexGrow: 1}} overflow={'auto'}>
+        <Vertical p={20} style={{flexGrow: 1}}>
             <Form method={'post'}>
                 <PlainWhitePanel>
                     <Label label={'Name'}>
@@ -277,7 +344,37 @@ export default function ReportRoute() {
                                               </Collapse.Panel>
                                           </Collapse>
                                       }}/>
-                    <ActionStateValue selector={state => ({columns: state?.columns, recordSet: state?.recordSet})}
+
+                    <ActionStateValue selector={state => state?.columns} render={(columns: ColumnModel[]) => {
+                        const activeColumnsLength = columns.filter(c => c.active).length;
+                        return <Collapse defaultActiveKey={['1', '2']} ghost>
+                            <Collapse.Panel header={`There were ${activeColumnsLength} columns selected.`}
+                                            key={1}>
+
+                                <Horizontal style={{flexWrap: "wrap"}}>
+                                    {columns.filter(c => c.enabled).map(col => {
+                                        return <Vertical key={col.key} mR={5} mB={5}>
+                                            <Switch checkedChildren={col.name} checked={col.active}
+                                                    unCheckedChildren={col.name} onChange={(checked) => {
+                                                setState(produce(oldVal => {
+                                                    const colIndex = oldVal.columns.findIndex(c => c.key === col.key);
+                                                    oldVal.columns[colIndex].active = checked;
+                                                }));
+                                            }}/>
+                                        </Vertical>
+                                    })}
+                                </Horizontal>
+                            </Collapse.Panel>
+                            <Collapse.Panel key={2} header={'Columns Order & Sort'}>
+                                <ColumnsOrderAndSort columns={columns} setState={setState}/>
+                            </Collapse.Panel>
+                        </Collapse>
+                    }}/>
+
+                    <ActionStateValue selector={state => ({
+                        columns: state?.columns.filter(c => c.active),
+                        recordSet: state?.recordSet
+                    })}
                                       render={({columns, recordSet}: { columns: ColumnModel[], recordSet: any[] }) => {
                                           const cols: ColumnsType<any> = columns?.map(col => {
                                               return {
@@ -291,7 +388,7 @@ export default function ReportRoute() {
                                           });
 
                                           return <Table scroll={{x: true, scrollToFirstRowOnChange: true}}
-                                                        columns={cols} dataSource={recordSet}/>
+                                                        columns={cols} dataSource={recordSet} size={"small"}/>
                                       }}>
 
                     </ActionStateValue>
@@ -430,6 +527,6 @@ export const action: ActionFunction = async ({request}) => {
 
 
 export const unstable_shouldReload: ShouldReloadFunction = ({url, prevUrl, submission, params}) => {
-    invariant({url,prevUrl,submission,params});
+    invariant({url, prevUrl, submission, params});
     return false;
 }
