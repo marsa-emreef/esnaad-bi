@@ -1,24 +1,11 @@
-import type { SetStateAction} from "react";
+import type {SetStateAction} from "react";
 import {memo, useEffect, useMemo, useState} from "react";
 import {Horizontal, Vertical} from "react-hook-components";
 import {HeaderPanel} from "~/components/HeaderPanel";
 import {PlainWhitePanel} from "~/components/PlainWhitePanel";
 import {actionStateFunction, useRemixActionState} from "~/remix-hook-actionstate";
 import Label from "~/components/Label";
-import {
-    Avatar,
-    Button,
-    Checkbox,
-    Collapse,
-    Input,
-    InputNumber,
-    Radio,
-    Segmented,
-    Select,
-    Switch,
-    Table,
-    Tooltip
-} from "antd";
+import {Button, Checkbox, Collapse, Input, InputNumber, Radio, Segmented, Select, Switch, Table, Tooltip} from "antd";
 import type {ColumnFilterModel, ColumnModel, QueryModel, RendererModel, ReportModel} from "~/db/model";
 import type {ActionFunction, LoaderFunction} from "@remix-run/node";
 import {json, redirect} from "@remix-run/node";
@@ -31,22 +18,21 @@ import {query} from "~/db/esnaad.server";
 import type {Dispatch, SetObserverAction} from "react-hook-useobserver";
 import produce from "immer";
 import {IoMdAddCircleOutline} from "react-icons/io";
-import {MdOutlineUpdate} from "react-icons/md";
 import {
     MdDelete,
+    MdDeleteOutline,
     MdKeyboardArrowDown,
     MdKeyboardArrowLeft,
     MdKeyboardArrowRight,
     MdKeyboardArrowUp,
-    MdPlayArrow,
-    MdDeleteOutline,
-    MdOutlineSave
+    MdOutlineSave,
+    MdOutlineUpdate,
+    MdPlayArrow
 } from "react-icons/md";
 import {filterFunction} from "~/routes/reports/filterFunction";
-import type {ColumnsType} from "antd/lib/table";
 import mapFunction from "~/routes/reports/mapFunction";
 import {AiOutlineFile} from "react-icons/ai"
-import {BsInfoCircleFill} from "react-icons/bs";
+import {ColumnsType} from "antd/lib/table";
 
 export const loader: LoaderFunction = async ({params}) => {
     const id = params.id;
@@ -62,9 +48,9 @@ export const loader: LoaderFunction = async ({params}) => {
         securityCode: [],
         recordSet: [],
         originalRecordSet: [],
-        paperSize : 'A4',
-        isLandscape : false,
-        padding : 5
+        paperSize: 'A4',
+        isLandscape: false,
+        padding: 5
     };
     if (id !== 'new') {
         const reportData: ((ReportModel & { recordSet?: any[], originalRecordSet?: any[] }) | undefined) = db.reports?.find(r => r.id === id);
@@ -88,11 +74,11 @@ export const loader: LoaderFunction = async ({params}) => {
 }
 
 const PAPER_DIMENSION = {
-    A3 : {width : 297,height:420},
-    A4 : {width : 210,height:297},
-    A5 : {width : 148,height:210},
-    Letter : {width : 216,height:279},
-    Legal : {width : 216,height:356}
+    A3: {width: 297, height: 420},
+    A4: {width: 210, height: 297},
+    A5: {width: 148, height: 210},
+    Letter: {width: 216, height: 279},
+    Legal: {width: 216, height: 356}
 }
 type StateType =
     ReportModel
@@ -205,27 +191,34 @@ const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queri
     </Horizontal>;
 });
 
-function ColumnsOrderAndSort(props: { columns: ColumnModel[], setState: Dispatch<SetStateAction<StateType>>,columnsError:((any & ColumnModel)[]),expectedColumnsWidth:number }) {
+function ColumnsOrderAndSort(props: { columns: ColumnModel[], setState: Dispatch<SetStateAction<StateType>>, columnsError: ((any & ColumnModel)[]), expectedColumnsWidth: number }) {
 
     const {columns, setState} = props;
     const [selectedRightColumns, setSelectedRightColumns] = useState<string[]>([]);
     const [selectedLeftColumns, setSelectedLeftColumns] = useState<string[]>([]);
-    const totalWidth = columns.filter(c => c.active).reduce((total,c) => total += (c.width??0),0);
+    const totalWidth = columns.filter(c => c.active).reduce((total, c) => total += (c.width ?? 0), 0);
     const expectedColumnsWidth = props.expectedColumnsWidth;
     const remainingGap = expectedColumnsWidth - totalWidth;
     return <Horizontal>
-        <Vertical style={{border: '1px solid rgba(0,0,0,0.1)',boxShadow:'0 7px 10px -10px rgba(0,0,0,0.3)', padding: '10px', paddingTop: '15px', flexGrow: 1}} m={5}
+        <Vertical style={{
+            border: '1px solid rgba(0,0,0,0.1)',
+            boxShadow: '0 7px 10px -10px rgba(0,0,0,0.3)',
+            padding: '10px',
+            paddingTop: '15px',
+            flexGrow: 1
+        }} m={5}
                   r={2}
                   position={'relative'}>
-            <Vertical top={-18} left={10} p={5} position={'absolute'} backgroundColor={'#fff'} style={{zIndex: 1}}>Active Columns</Vertical>
+            <Vertical top={-18} left={10} p={5} position={'absolute'} backgroundColor={'#fff'} style={{zIndex: 1}}>Active
+                Columns</Vertical>
             <Vertical>
                 {columns.filter(c => c.active).map((col, index, source) => {
-                    const error:ColumnModel = props?.columnsError?.find(c => c.key === col.key)
+                    const error: ColumnModel = props?.columnsError?.find(c => c.key === col.key)
                     const isFirstIndex = index === 0;
                     const isLastIndex = index === source.length - 1;
                     return <Horizontal key={col.key} mB={5}>
                         <Vertical style={{borderBottom: '1px solid lightgrey', padding: '3px 5px', flexGrow: 1}} mR={5}
-                                  >
+                        >
                             <Checkbox checked={selectedLeftColumns.includes(col.key)}
                                       onChange={(e) => {
                                           setSelectedLeftColumns(old => {
@@ -242,12 +235,12 @@ function ColumnsOrderAndSort(props: { columns: ColumnModel[], setState: Dispatch
                         </Vertical>
                         <Vertical mR={5} w={120}>
                             <Tooltip title={error?.width}>
-                            <InputNumber status={error?.width ? 'error' : ''} value={col.width} onChange={(val) => {
-                                setState(produce(state => {
-                                    const index = state.columns.findIndex(c => c.key === col.key);
-                                    state.columns[index].width = val;
-                                }));
-                            }} addonAfter={'mm'}/>
+                                <InputNumber status={error?.width ? 'error' : ''} value={col.width} onChange={(val) => {
+                                    setState(produce(state => {
+                                        const index = state.columns.findIndex(c => c.key === col.key);
+                                        state.columns[index].width = val;
+                                    }));
+                                }} addonAfter={'mm'}/>
                             </Tooltip>
                         </Vertical>
                         <Vertical style={{opacity: isLastIndex ? 0 : 1}} mR={5}>
@@ -273,32 +266,34 @@ function ColumnsOrderAndSort(props: { columns: ColumnModel[], setState: Dispatch
                             }} icon={<MdKeyboardArrowDown style={{fontSize: '1.5rem'}}/>}/>
                         </Vertical>
                         <Vertical style={{opacity: isFirstIndex ? 0 : 1}}>
-                            <Button type={"dashed"} icon={<MdKeyboardArrowUp style={{fontSize: '1.5rem'}} />} onClick={() => {
+                            <Button type={"dashed"} icon={<MdKeyboardArrowUp style={{fontSize: '1.5rem'}}/>}
+                                    onClick={() => {
 
-                                setState(produce(old => {
-                                    const colIndex = old.columns.findIndex(c => c.key === col.key);
-                                    const {prevActiveIndex} = old.columns.reduce((res, col, index) => {
-                                        if (col.active && index < res.currentIndex) {
-                                            res.prevActiveIndex = index;
-                                        }
-                                        if (col.active && index > res.currentIndex && res.nextActiveIndex === 0) {
-                                            res.nextActiveIndex = index;
-                                        }
-                                        return res;
-                                    }, {
-                                        currentIndex: colIndex,
-                                        prevActiveIndex: 0,
-                                        nextActiveIndex: 0
-                                    });
-                                    old.columns.splice(colIndex, 1);
-                                    old.columns.splice(prevActiveIndex, 0, col);
-                                }));
-                            }}/>
+                                        setState(produce(old => {
+                                            const colIndex = old.columns.findIndex(c => c.key === col.key);
+                                            const {prevActiveIndex} = old.columns.reduce((res, col, index) => {
+                                                if (col.active && index < res.currentIndex) {
+                                                    res.prevActiveIndex = index;
+                                                }
+                                                if (col.active && index > res.currentIndex && res.nextActiveIndex === 0) {
+                                                    res.nextActiveIndex = index;
+                                                }
+                                                return res;
+                                            }, {
+                                                currentIndex: colIndex,
+                                                prevActiveIndex: 0,
+                                                nextActiveIndex: 0
+                                            });
+                                            old.columns.splice(colIndex, 1);
+                                            old.columns.splice(prevActiveIndex, 0, col);
+                                        }));
+                                    }}/>
                         </Vertical>
                     </Horizontal>
                 })}
                 {((expectedColumnsWidth - totalWidth) !== 0) &&
-                    <Vertical style={{fontStyle:'italic',color:'dodgerblue'}}>{expectedColumnsWidth - totalWidth}mm width remaining to be distributed.</Vertical>
+                    <Vertical style={{fontStyle: 'italic', color: 'dodgerblue'}}>{expectedColumnsWidth - totalWidth}mm
+                        width remaining to be distributed.</Vertical>
                 }
             </Vertical>
         </Vertical>
@@ -333,7 +328,13 @@ function ColumnsOrderAndSort(props: { columns: ColumnModel[], setState: Dispatch
 
         </Vertical>
 
-        <Vertical style={{border: '1px solid rgba(0,0,0,0.1)',boxShadow:'0 7px 10px -10px rgba(0,0,0,0.3)', padding: '5px', paddingTop: '10px', width: 200}} m={5}
+        <Vertical style={{
+            border: '1px solid rgba(0,0,0,0.1)',
+            boxShadow: '0 7px 10px -10px rgba(0,0,0,0.3)',
+            padding: '5px',
+            paddingTop: '10px',
+            width: 200
+        }} m={5}
                   r={2}
                   position={'relative'}>
             <Vertical top={-18} left={10} p={5} position={'absolute'} backgroundColor={'#fff'} style={{zIndex: 1}}>In
@@ -382,7 +383,15 @@ export default function ReportRoute() {
         <Vertical p={20} style={{flexGrow: 1}} overflow={'auto'}>
             <Form method={'post'}>
                 <PlainWhitePanel>
-                    <p style={{backgroundColor:'rgba(0,0,0,0.05)',borderLeft:'5px solid #BBB',padding:10,fontStyle:'italic'}}>Report is data that specifies how the report will be displayed. We can define the query that will be executed, as well as the columns that will be activated and their order. In addition, we can describe the paper size that will be used to print the report, as well as the size of each column based on the paper size.</p>
+                    <p style={{
+                        backgroundColor: 'rgba(0,0,0,0.05)',
+                        borderLeft: '5px solid #BBB',
+                        padding: 10,
+                        fontStyle: 'italic'
+                    }}>Report is data that specifies how the report will be displayed. We can define the query that will
+                        be executed, as well as the columns that will be activated and their order. In addition, we can
+                        describe the paper size that will be used to print the report, as well as the size of each
+                        column based on the paper size.</p>
 
                     <Label label={'Name'}>
                         <ActionStateValue selector={state => state?.name} render={(value) => {
@@ -425,221 +434,261 @@ export default function ReportRoute() {
                                     </Tooltip>
                                 }}/>
                             </Vertical>
-                            <Button htmlType={'submit'} name={'intent'} value={'runQuery'} type={'primary'} icon={<MdPlayArrow style={{marginRight:5,marginBottom:-5,fontSize:'1.2rem'}}/>}>Run Query</Button>
+                            <Button htmlType={'submit'} name={'intent'} value={'runQuery'} type={'primary'}
+                                    icon={<MdPlayArrow
+                                        style={{marginRight: 5, marginBottom: -5, fontSize: '1.2rem'}}/>}>Run
+                                Query</Button>
                         </Horizontal>
                     </Label>
 
-                    <ActionStateValue selector={state => state?.columnFilters}
-                                      render={(columnFilters?: ColumnFilterModel[]) => {
-                                          const appliedFilters = columnFilters?.length;
-                                          return <Collapse defaultActiveKey={['1']} ghost>
-                                              <Collapse.Panel header={`There were ${appliedFilters} filters used.`}
-                                                              key={1}>
-                                                  <Vertical>
-                                                      {columnFilters?.map((filter: ColumnFilterModel, index: number) => {
-                                                          const isEquals = filter.filterCondition === 'equals';
-                                                          const isFreeText = !isEquals;
-                                                          return <FilterRowItemRenderer
-                                                              queries={$state.current?.providers?.queries}
-                                                              renderers={$state.current?.providers?.renderer || []}
-                                                              queryId={$state.current?.queryId}
-                                                              originalRecordSet={$state.current?.originalRecordSet}
-                                                              filter={filter} setState={setState} isEquals={isEquals}
-                                                              isFreeText={isFreeText} key={filter.id} rowIndex={index}/>
-                                                      })}
-                                                      <Horizontal hAlign={'right'}>
-                                                          <Button type={"dashed"} style={{marginRight: 5}}
-                                                                  htmlType={'submit'} name={'intent'}
-                                                                  value={'applyFilter'} icon={<MdOutlineUpdate style={{fontSize:'1.2rem',marginBottom:-5,marginRight:5}}/>}>Apply Filter</Button>
-                                                          <Button type={"primary"} onClick={() => {
-                                                              setState(val => {
-                                                                  const columnFilters = [...val?.columnFilters];
-                                                                  const colFilter: ColumnFilterModel = {
-                                                                      joinType: 'and',
-                                                                      columnKey: '',
-                                                                      filterCondition: 'equals',
-                                                                      filterValue: '',
-                                                                      children: [],
-                                                                      id: v4()
-                                                                  }
-                                                                  columnFilters.push(colFilter);
-                                                                  return {...val, columnFilters}
-                                                              })
-                                                          }} icon={<IoMdAddCircleOutline style={{fontSize:'1.2rem',marginRight:5,marginBottom:-5}}/>}>Add Filter</Button>
-                                                      </Horizontal>
-                                                  </Vertical>
-                                              </Collapse.Panel>
-                                          </Collapse>
-                                      }}/>
-                    <ActionStateValue selector={state => [state?.paperSize,state?.isLandscape,state?.padding]} render={([value,isLandscape,padding]) => {
-                        const paperSize = value;
-                        const columnsExpectedWidth:number = PAPER_DIMENSION[$state.current?.paperSize||'A4'][isLandscape?'height':'width']-(2*(padding ?? 0));
-                        return <Collapse defaultActiveKey={['1']} ghost>
-                            <Collapse.Panel header={`This report prints best on ${paperSize}-sized paper.`} key={1}>
-                                <Vertical>
-                                    <Horizontal mB={10} vAlign={'center'}>
-                                        <Switch checkedChildren="Landscape" unCheckedChildren="Portrait" checked={isLandscape} onChange={(value) =>{
-                                            setState(oldVal => {
-                                                return {...oldVal,isLandscape:value}
-                                            })
-                                        }} />
+                    <ActionStateValue
+                        selector={state => [state?.recordSet,state?.columnFilters, state?.paperSize, state?.isLandscape, state?.padding, state?.columns]}
+                        render={([recordSet,columnFilters, paperSize, isLandscape, padding, columns]: [recordSet:any[],columnFilters: ColumnFilterModel[], paperSize: 'A3' | 'A4' | 'A5', isLandscape: boolean, padding: number, columns: ColumnModel[]]) => {
 
-                                    </Horizontal>
-                                    <Horizontal mB={5}>
-                                        <Vertical mR={10} >
-                                            Padding :
-                                        </Vertical>
-                                        <Vertical>
-                                            <Radio.Group value={$state.current?.padding} onChange={(value) => {
-                                                setState(oldVal => {
-                                                    return {...oldVal,padding:value.target.value}
-                                                })
-                                            }}>
-                                                <Radio value={5}>5mm</Radio>
-                                                <Radio value={10}>10mm</Radio>
-                                                <Radio value={15}>15mm</Radio>
-                                                <Radio value={20}>20mm</Radio>
-                                            </Radio.Group>
-                                        </Vertical>
-                                    </Horizontal>
-                                    <Horizontal mB={10}>
-                                    <Segmented
-                                        value={paperSize}
-                                        onChange={(value:any) => {
-                                            setState(oldVal => {
-                                                return {...oldVal,paperSize:value}
-                                            });
-                                        }}
-                                        options={[
-                                            {
-                                                label: (
-                                                    <div style={{ padding: 4 }}>
-                                                        <Vertical position={"relative"}>
-                                                            <AiOutlineFile fontSize={'3rem'} style={{transform:isLandscape?'rotate(-90deg)':'none',transition:'transform 300ms ease-in-out'}}/>
-                                                            <Vertical position={'absolute'} top={0} left={0} w={'100%'} h={'100%'} hAlign={'center'} vAlign={'bottom'} pB={5}>
-                                                                <Vertical>A3</Vertical>
-                                                            </Vertical>
-                                                        </Vertical>
+                            const columnsExpectedWidth: number = PAPER_DIMENSION[paperSize || 'A4'][isLandscape ? 'height' : 'width'] - (2 * (padding ?? 0));
 
-                                                    </div>
-                                                ),
-                                                value: 'A3',
-                                            },
-                                            {
-                                                label: (
-                                                    <div style={{ padding: 4 }}>
-                                                        <Vertical position={"relative"}>
-                                                            <AiOutlineFile fontSize={'3rem'} style={{transform:isLandscape?'rotate(-90deg)':'none',transition:'transform 300ms ease-in-out'}}/>
-                                                            <Vertical position={'absolute'} top={0} left={0} w={'100%'} h={'100%'} hAlign={'center'} vAlign={'bottom'} pB={5}>
-                                                                <Vertical>A4</Vertical>
-                                                            </Vertical>
-                                                        </Vertical>
-
-                                                    </div>
-                                                ),
-                                                value: 'A4',
-                                            },
-                                            {
-                                                label: (
-                                                    <div style={{ padding: 4 }}>
-                                                        <Vertical position={"relative"}>
-                                                            <AiOutlineFile fontSize={'3rem'} style={{transform:isLandscape?'rotate(-90deg)':'none',transition:'transform 300ms ease-in-out'}}/>
-                                                            <Vertical position={'absolute'} top={0} left={0} w={'100%'} h={'100%'} hAlign={'center'} vAlign={'bottom'} pB={5}>
-                                                                <Vertical>A5</Vertical>
-                                                            </Vertical>
-                                                        </Vertical>
-
-                                                    </div>
-                                                ),
-                                                value: 'A5',
-                                            },
-                                            {
-                                                label: (
-                                                    <div style={{ padding: 4 }}>
-                                                        <Vertical position={"relative"}>
-                                                            <AiOutlineFile fontSize={'3rem'} style={{transform:isLandscape?'rotate(-90deg)':'none',transition:'transform 300ms ease-in-out'}}/>
-                                                            <Vertical position={'absolute'} top={0} left={0} w={'100%'} h={'100%'} hAlign={'center'} vAlign={'bottom'} pB={5}>
-                                                                <Vertical>Lttr</Vertical>
-                                                            </Vertical>
-                                                        </Vertical>
-
-                                                    </div>
-                                                ),
-                                                value: 'Letter',
-                                            },
-                                            {
-                                                label: (
-                                                    <div style={{ padding: 4 }}>
-                                                        <Vertical position={"relative"}>
-                                                            <AiOutlineFile fontSize={'3rem'} style={{transform:isLandscape?'rotate(-90deg)':'none',transition:'transform 300ms ease-in-out'}}/>
-                                                            <Vertical position={'absolute'} top={0} left={0} w={'100%'} h={'100%'} hAlign={'center'} vAlign={'bottom'} pB={5}>
-                                                                <Vertical>Lgl</Vertical>
-                                                            </Vertical>
-                                                        </Vertical>
-
-                                                    </div>
-                                                ),
-                                                value: 'Legal',
-                                            },
-                                        ]}
-                                    />
-
-                                </Horizontal>
-                                    <Vertical style={{backgroundColor:'rgba(0,0,0,0.05)',borderLeft:'5px solid #BBB',padding:10,fontStyle:'italic'}} vAlign={'center'} >
-                                        {$state.current?.paperSize} Size measures {PAPER_DIMENSION[$state.current?.paperSize||'A4']?.width} by {PAPER_DIMENSION[$state.current?.paperSize||'A4']?.height} millimeters. Due of the {padding}mm padding on the right and left sides of the page, which is {$state.current?.isLandscape?'landscape':'portrait'} oriented. Consequently, the column's available width is {columnsExpectedWidth} mm.
-                                    </Vertical>
-                                </Vertical>
-                            </Collapse.Panel>
-                        </Collapse>
-                    }}/>
-
-                    <Vertical hAlign={'center'}>
-
-
-                    </Vertical>
-                    <ActionStateValue selector={state => [state?.columns,state?.padding]} render={([columns,padding]) => {
-                        const expectedColumnsWidth:number = PAPER_DIMENSION[$state.current?.paperSize||'A4'][$state.current?.isLandscape?'height':'width']-(2*($state.current?.padding ?? 0));
-                        return <Collapse defaultActiveKey={['1']} ghost>
-                            <Collapse.Panel key={1} header={'Columns Order & Sort'}>
-                                {$state.current?.errors?.paperSize &&
-                                    <Vertical mB={15} style={{padding:10,color:'red',fontStyle:'italic',backgroundColor:'rgba(0,0,0,0.05)',borderLeft:'5px solid lightgrey' }}>{$state.current?.errors?.paperSize}</Vertical>
+                            const appliedFilters = columnFilters?.length;
+                            const cols: ColumnsType<any> = columns?.filter(c => c.active).map(col => {
+                                return {
+                                    title: col.name,
+                                    dataIndex: col.key,
+                                    key: col.key,
+                                    width : col.width+'mm',
+                                    render: (value: any) => {
+                                        return <div dangerouslySetInnerHTML={{__html: value}}/>
+                                    }
                                 }
-                                <ColumnsOrderAndSort columns={columns} setState={setState} columnsError={$state.current?.errors?.columns||[]} expectedColumnsWidth={expectedColumnsWidth}/>
-                            </Collapse.Panel>
-                        </Collapse>
-                    }}/>
+                            });
+                            return <Collapse defaultActiveKey={['1', '2', '3','4']} style={{marginBottom:10}}>
+                                <Collapse.Panel header={`There were ${appliedFilters} filters used.`}
+                                                key={1}>
+                                    <Vertical>
+                                        {columnFilters?.map((filter: ColumnFilterModel, index: number) => {
+                                            const isEquals = filter.filterCondition === 'equals';
+                                            const isFreeText = !isEquals;
+                                            return <FilterRowItemRenderer
+                                                queries={$state.current?.providers?.queries}
+                                                renderers={$state.current?.providers?.renderer || []}
+                                                queryId={$state.current?.queryId}
+                                                originalRecordSet={$state.current?.originalRecordSet}
+                                                filter={filter} setState={setState} isEquals={isEquals}
+                                                isFreeText={isFreeText} key={filter.id} rowIndex={index}/>
+                                        })}
+                                        <Horizontal hAlign={'right'}>
+                                            <Button type={"dashed"} style={{marginRight: 5}}
+                                                    htmlType={'submit'} name={'intent'}
+                                                    value={'applyFilter'} icon={<MdOutlineUpdate
+                                                style={{fontSize: '1.2rem', marginBottom: -5, marginRight: 5}}/>}>Apply
+                                                Filter</Button>
+                                            <Button type={"primary"} onClick={() => {
+                                                setState(val => {
+                                                    const columnFilters = [...val?.columnFilters];
+                                                    const colFilter: ColumnFilterModel = {
+                                                        joinType: 'and',
+                                                        columnKey: '',
+                                                        filterCondition: 'equals',
+                                                        filterValue: '',
+                                                        children: [],
+                                                        id: v4()
+                                                    }
+                                                    columnFilters.push(colFilter);
+                                                    return {...val, columnFilters}
+                                                })
+                                            }} icon={<IoMdAddCircleOutline
+                                                style={{fontSize: '1.2rem', marginRight: 5, marginBottom: -5}}/>}>Add
+                                                Filter</Button>
+                                        </Horizontal>
+                                    </Vertical>
+                                </Collapse.Panel>
+                                <Collapse.Panel header={`This report prints best on ${paperSize}-sized paper.`} key={2}>
+                                    <Vertical>
+                                        <Horizontal mB={10} vAlign={'center'}>
+                                            <Switch checkedChildren="Landscape" unCheckedChildren="Portrait"
+                                                    checked={isLandscape} onChange={(value) => {
+                                                setState(oldVal => {
+                                                    return {...oldVal, isLandscape: value}
+                                                })
+                                            }}/>
 
-                    <ActionStateValue selector={state => ({
-                        columns: state?.columns.filter(c => c.active),
-                        recordSet: state?.recordSet
-                    })}
-                                      render={({columns, recordSet}: { columns: ColumnModel[], recordSet: any[] }) => {
-                                          const cols: ColumnsType<any> = columns?.map(col => {
-                                              return {
-                                                  title: col.name,
-                                                  dataIndex: col.key,
-                                                  key: col.key,
-                                                  width : col.width+'mm',
-                                                  render: (value: any) => {
-                                                      return <div dangerouslySetInnerHTML={{__html: value}}/>
-                                                  }
-                                              }
-                                          });
+                                        </Horizontal>
+                                        <Horizontal mB={5}>
+                                            <Vertical mR={10}>
+                                                Padding :
+                                            </Vertical>
+                                            <Vertical>
+                                                <Radio.Group value={padding} onChange={(value) => {
+                                                    setState(oldVal => {
+                                                        return {...oldVal, padding: value.target.value}
+                                                    })
+                                                }}>
+                                                    <Radio value={5}>5mm</Radio>
+                                                    <Radio value={10}>10mm</Radio>
+                                                    <Radio value={15}>15mm</Radio>
+                                                    <Radio value={20}>20mm</Radio>
+                                                </Radio.Group>
+                                            </Vertical>
+                                        </Horizontal>
+                                        <Horizontal mB={10}>
+                                            <Segmented
+                                                value={paperSize}
+                                                onChange={(value: any) => {
+                                                    setState(oldVal => {
+                                                        return {...oldVal, paperSize: value}
+                                                    });
+                                                }}
+                                                options={[
+                                                    {
+                                                        label: (
+                                                            <div style={{padding: 4}}>
+                                                                <Vertical position={"relative"}>
+                                                                    <AiOutlineFile fontSize={'3rem'} style={{
+                                                                        transform: isLandscape ? 'rotate(-90deg)' : 'none',
+                                                                        transition: 'transform 300ms ease-in-out'
+                                                                    }}/>
+                                                                    <Vertical position={'absolute'} top={0} left={0}
+                                                                              w={'100%'} h={'100%'} hAlign={'center'}
+                                                                              vAlign={'bottom'} pB={5}>
+                                                                        <Vertical>A3</Vertical>
+                                                                    </Vertical>
+                                                                </Vertical>
 
-                                          return <Table scroll={{x: true, scrollToFirstRowOnChange: true}}
-                                                        columns={cols} dataSource={recordSet} size={"small"}/>
-                                      }}>
+                                                            </div>
+                                                        ),
+                                                        value: 'A3',
+                                                    },
+                                                    {
+                                                        label: (
+                                                            <div style={{padding: 4}}>
+                                                                <Vertical position={"relative"}>
+                                                                    <AiOutlineFile fontSize={'3rem'} style={{
+                                                                        transform: isLandscape ? 'rotate(-90deg)' : 'none',
+                                                                        transition: 'transform 300ms ease-in-out'
+                                                                    }}/>
+                                                                    <Vertical position={'absolute'} top={0} left={0}
+                                                                              w={'100%'} h={'100%'} hAlign={'center'}
+                                                                              vAlign={'bottom'} pB={5}>
+                                                                        <Vertical>A4</Vertical>
+                                                                    </Vertical>
+                                                                </Vertical>
 
-                    </ActionStateValue>
+                                                            </div>
+                                                        ),
+                                                        value: 'A4',
+                                                    },
+                                                    {
+                                                        label: (
+                                                            <div style={{padding: 4}}>
+                                                                <Vertical position={"relative"}>
+                                                                    <AiOutlineFile fontSize={'3rem'} style={{
+                                                                        transform: isLandscape ? 'rotate(-90deg)' : 'none',
+                                                                        transition: 'transform 300ms ease-in-out'
+                                                                    }}/>
+                                                                    <Vertical position={'absolute'} top={0} left={0}
+                                                                              w={'100%'} h={'100%'} hAlign={'center'}
+                                                                              vAlign={'bottom'} pB={5}>
+                                                                        <Vertical>A5</Vertical>
+                                                                    </Vertical>
+                                                                </Vertical>
+
+                                                            </div>
+                                                        ),
+                                                        value: 'A5',
+                                                    },
+                                                    {
+                                                        label: (
+                                                            <div style={{padding: 4}}>
+                                                                <Vertical position={"relative"}>
+                                                                    <AiOutlineFile fontSize={'3rem'} style={{
+                                                                        transform: isLandscape ? 'rotate(-90deg)' : 'none',
+                                                                        transition: 'transform 300ms ease-in-out'
+                                                                    }}/>
+                                                                    <Vertical position={'absolute'} top={0} left={0}
+                                                                              w={'100%'} h={'100%'} hAlign={'center'}
+                                                                              vAlign={'bottom'} pB={5}>
+                                                                        <Vertical>Lttr</Vertical>
+                                                                    </Vertical>
+                                                                </Vertical>
+
+                                                            </div>
+                                                        ),
+                                                        value: 'Letter',
+                                                    },
+                                                    {
+                                                        label: (
+                                                            <div style={{padding: 4}}>
+                                                                <Vertical position={"relative"}>
+                                                                    <AiOutlineFile fontSize={'3rem'} style={{
+                                                                        transform: isLandscape ? 'rotate(-90deg)' : 'none',
+                                                                        transition: 'transform 300ms ease-in-out'
+                                                                    }}/>
+                                                                    <Vertical position={'absolute'} top={0} left={0}
+                                                                              w={'100%'} h={'100%'} hAlign={'center'}
+                                                                              vAlign={'bottom'} pB={5}>
+                                                                        <Vertical>Lgl</Vertical>
+                                                                    </Vertical>
+                                                                </Vertical>
+
+                                                            </div>
+                                                        ),
+                                                        value: 'Legal',
+                                                    },
+                                                ]}
+                                            />
+
+                                        </Horizontal>
+                                        <Vertical style={{
+                                            backgroundColor: 'rgba(0,0,0,0.05)',
+                                            borderLeft: '5px solid #BBB',
+                                            padding: 10,
+                                            fontStyle: 'italic'
+                                        }} vAlign={'center'}>
+                                            {paperSize} Size
+                                            measures {PAPER_DIMENSION[paperSize || 'A4']?.width} by {PAPER_DIMENSION[paperSize || 'A4']?.height} millimeters.
+                                            Due of the {padding}mm padding on the right and left sides of the page,
+                                            which is {$state.current?.isLandscape ? 'landscape' : 'portrait'} oriented.
+                                            Consequently, the column's available width is {columnsExpectedWidth} mm.
+                                        </Vertical>
+                                    </Vertical>
+                                </Collapse.Panel>
+                                <Collapse.Panel key={3} header={'Columns Order & Sort'}>
+                                    {$state.current?.errors?.paperSize &&
+                                        <Vertical mB={15} style={{
+                                            padding: 10,
+                                            color: 'red',
+                                            fontStyle: 'italic',
+                                            backgroundColor: 'rgba(0,0,0,0.05)',
+                                            borderLeft: '5px solid lightgrey'
+                                        }}>{paperSize}</Vertical>
+                                    }
+                                    <ColumnsOrderAndSort columns={columns} setState={setState}
+                                                         columnsError={$state.current?.errors?.columns || []}
+                                                         expectedColumnsWidth={columnsExpectedWidth}/>
+                                </Collapse.Panel>
+                                <Collapse.Panel key={4} header={'Report Preview'} >
+
+                                    <Table scroll={{x: true, scrollToFirstRowOnChange: true}}
+                                           columns={cols} dataSource={recordSet} size={"small"}/>
+                                </Collapse.Panel>
+                            </Collapse>
+                        }}/>
+
+
+
+
                     <ActionStateValue selector={state => state?.id} render={(value) => {
                         const isNew = value === '';
                         return <Horizontal hAlign={'right'}>
                             {!isNew &&
                                 <Button htmlType={'submit'} name={'intent'} type={"link"} value={'delete'}
-                                        style={{marginRight: 5}} icon={<MdDeleteOutline style={{fontSize:'1.2rem',marginRight:5,marginBottom:-5}}/>}>Delete</Button>
+                                        style={{marginRight: 5}} icon={<MdDeleteOutline
+                                    style={{fontSize: '1.2rem', marginRight: 5, marginBottom: -5}}/>}>Delete</Button>
                             }
                             <Button htmlType={'submit'} name={'intent'} type={"primary"}
-                                    value={'save'} icon={<MdOutlineSave style={{fontSize:'1.2rem',marginRight:5,marginBottom:-5}}/>}>{isNew ? 'Save' : 'Update'}</Button>
+                                    value={'save'} icon={<MdOutlineSave style={{
+                                fontSize: '1.2rem',
+                                marginRight: 5,
+                                marginBottom: -5
+                            }}/>}>{isNew ? 'Save' : 'Update'}</Button>
                         </Horizontal>
                     }}/>
                 </PlainWhitePanel>
@@ -657,8 +706,8 @@ function validateErrors(state: ReportModel) {
         columnFilters: [],
         securityCode: [],
         description: '',
-        paperSize :'',
-        isLandscape : ''
+        paperSize: '',
+        isLandscape: ''
     };
     if (!state.name) {
         errors.name = 'Name must not null';
@@ -666,7 +715,7 @@ function validateErrors(state: ReportModel) {
     if (!state.queryId) {
         errors.queryId = 'Query Id must not null'
     }
-    if(!state.paperSize){
+    if (!state.paperSize) {
         errors.queryId = 'Paper size must not null';
     }
 
@@ -674,8 +723,8 @@ function validateErrors(state: ReportModel) {
 
     let colsTotalWidth = 0;
     state.columns.forEach(c => {
-        const error:any & ColumnModel = {};
-        if(c.active && c.enabled && !c.width){
+        const error: any & ColumnModel = {};
+        if (c.active && c.enabled && !c.width) {
             error.width = 'Width is required';
         }
         const hasError = Object.values(error).some(err => err);
@@ -683,12 +732,12 @@ function validateErrors(state: ReportModel) {
             error.key = c.key;
             errors.columns.push(error);
         }
-        if(c.active && c.enabled){
+        if (c.active && c.enabled) {
             colsTotalWidth = colsTotalWidth + (c.width || 0);
         }
     });
     const expectedWidth = (state.isLandscape ? dimension.height : dimension.width) - (2 * (state?.padding || 0));
-    if(colsTotalWidth !== expectedWidth){
+    if (state.columns && state.columns.length >0 && colsTotalWidth !== expectedWidth ) {
         errors.paperSize = `The total width of columns does not match the width of the page.${colsTotalWidth}mm instead of the expected ${expectedWidth}mm.`;
     }
     state.columnFilters.forEach(c => {
@@ -726,21 +775,28 @@ export const action: ActionFunction = async ({request}) => {
     const state = await actionStateFunction<ReportModel & { recordSet: any[], originalRecordSet: any[] }>({formData});
     invariant(state, 'State cannot be empty');
     const intent = formData.get('intent');
+    console.log('Looking intent ',intent);
     const {errors, hasErrors} = validateErrors(state);
     if (hasErrors) {
+        console.log('We have errors shit ',errors);
         return json({...state, errors});
     }
     if (intent === 'runQuery') {
+        console.log('Looking columns SHIT');
         const db = await loadDb();
         const qry = db.queries?.find(q => q.id === state.queryId);
         invariant(qry, 'Query data must not null');
         const data = await query(qry.sqlQuery);
+        console.log('We have columns SHIT',qry.columns);
         return json({
             ...state,
             errors,
             recordSet: data.recordSet.map(mapFunction(qry.columns, db.renderer || [])).filter(filterFunction(state.columnFilters)),
             originalRecordSet: data.recordSet,
-            columns: qry.columns.filter(c => c.enabled)
+            columns: qry.columns.filter(c => {
+                console.log('Is it enabled ',c.enabled);
+                return c.enabled;
+            })
         });
     }
 

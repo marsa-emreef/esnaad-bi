@@ -83,48 +83,62 @@ export const loader: LoaderFunction = async ({request, params}) => {
 }
 
 function printTable(loaderData: ((ReportModel & { recordSet?: any[] }) | undefined), pageCount: number) {
-    return `<div style="display: flex;flex-direction: column;height: 100%;">
-<section>Header</section>
-<div id="print-page-${pageCount}" style="display: flex;flex-direction: column;flex-grow: 1">
-    <table style="table-layout: fixed">
-        <thead id="print-page-thead-${pageCount}">
-            <tr>
-                ${loaderData?.columns.filter(c => c.active).map(column => `<th style="width: ${column.width || ''};white-space: nowrap">${column.name}</th>`).join('')}
-            </tr>
-        </thead>
-        <tbody id="print-page-tbody-${pageCount}"></tbody>
-    </table>
+    return `<div style="display: flex;flex-direction: column;height: 100%;font-size: 12px;line-height: 13px">
+<div style="background-color: rgba(0,0,0,0.05);padding: 10px;-webkit-print-color-adjust: exact; ">
+<div style="font-size: 18px;text-align: center">${loaderData?.name}</div>
 </div>
-<section>Footer</section>
+
+<div id="print-page-${pageCount}" style="display: flex;flex-direction: column;flex-grow: 1">
+    <div style="display: flex;flex-direction: column">
+        <div id="print-page-thead-${pageCount}" style="display: flex;flex-direction: row;font-weight: bold;border-bottom: 1px solid lightgray;background-color: #444;color: #fff;-webkit-print-color-adjust: exact; ">
+            ${loaderData?.columns.filter(c => c.active).map(column => `<div style="width: ${column.width || '0'}mm;flex-shrink: 0;flex-grow: 0;padding: 5px 3px">${column.name}</div>`).join('')}
+        </div>
+        <div id="print-page-tbody-${pageCount}">
+        
+        </div>
+    </div>
+</div>
+<div style="background-color: lightgray;padding: 5px;-webkit-print-color-adjust: exact; ">
+    <div style="display: flex">
+        <div style="flex-grow: 1;display: flex;align-items: center">
+            
+        </div>
+        <div>Page #${pageCount + 1}</div>
+    </div>
+    
+</div>
 </div>`;
 }
 
-function printPage(loaderData: any, pageCount: number, rowIndex: number) {
+function printPage(loaderData: LoaderData, pageCount: number, rowIndex: number) {
     const section = document.createElement('div');
     section.setAttribute('class', 'sheet');
-    section.setAttribute('style', 'padding:0mm;page-break-after:always;break-after:page;');
+    section.setAttribute('style', `padding:${loaderData?.padding}mm;page-break-after:always;break-after:page;`);
     section.innerHTML = printTable(loaderData, pageCount);
     document.getElementById('print-page-root')?.appendChild(section);
     const container = document.getElementById(`print-page-${pageCount}`);
-    const tbody = document.getElementById(`print-page-tbody-${pageCount}`);
-    const thead = document.getElementById(`print-page-thead-${pageCount}`);
+    const tableBody = document.getElementById(`print-page-tbody-${pageCount}`);
+    const tableHead = document.getElementById(`print-page-thead-${pageCount}`);
     const recordSet = loaderData?.recordSet || []
     const recordSetLength = recordSet.length;
-    let containerHeight = (container?.getBoundingClientRect().height || 0) - (thead?.getBoundingClientRect().height || 0);
+    let containerHeight = (container?.getBoundingClientRect().height || 0) - (tableHead?.getBoundingClientRect().height || 0);
     for (let index = rowIndex; index < recordSetLength; index++) {
         const record = recordSet[index];
-        const tr = document.createElement('tr');
-        tr.setAttribute('id', 'print-page-tr-' + index)
-        tr.innerHTML = loaderData?.columns.filter((c: ColumnModel) => c.active).map((column: ColumnModel) => {
-            return `<td style="width: ${column.width || ''}">${record[column.key] ?? ''}</td>`
+        const rowElementDraft = document.createElement('div');
+        rowElementDraft.setAttribute('id', 'print-page-tr-' + index);
+        rowElementDraft.setAttribute('style', 'display:flex;width:100%;border-bottom:1px solid lightgray;');
+        rowElementDraft.innerHTML = loaderData?.columns.filter((c: ColumnModel) => c.active).map((column: ColumnModel, colIndex) => {
+            return `<div style="width: ${column.width || ''}mm;flex-shrink: 0;flex-grow: 0;border-right: 1px solid lightgray;padding:3px;border-left: ${colIndex === 0 ? '1px solid lightgrey' : ''}">${record[column.key] ?? ''}</div>`
+            // return `<div style="width: ${column.width || ''}mm;flex-shrink: 0;flex-grow: 0;text-overflow: ellipsis;overflow: hidden;border-right: 1px solid lightgray;padding:3px;border-left: ${colIndex === 0 ? '1px solid lightgrey' : ''}">${record[column.key] ?? ''}</div>`
         }).join('') || '';
-        tbody?.appendChild(tr);
-        const persistedTr = document.getElementById('print-page-tr-' + index);
-        const persistedTrHeight = persistedTr?.getBoundingClientRect().height || 0;
-        containerHeight = containerHeight - persistedTrHeight;
+        tableBody?.appendChild(rowElementDraft);
+        const rowElement = document.getElementById('print-page-tr-' + index);
+        const rowElementHeight = rowElement?.getBoundingClientRect().height || 0;
+        containerHeight = containerHeight - rowElementHeight;
+
         if (containerHeight < 0) {
-            invariant(persistedTr, 'TR cannot be null');
-            tbody?.removeChild(persistedTr);
+            invariant(rowElement, 'TR cannot be null');
+            tableBody?.removeChild(rowElement);
             printPage(loaderData, pageCount + 1, index);
             return;
         }
@@ -141,12 +155,12 @@ body.A3.landscape { width: 420mm }
   body.legal.landscape       { width: 357mm }
  */
 function ReportPanel() {
-    const loaderData = useLoaderData<((ReportModel & { recordSet?: any[] }) | undefined)>();
+    const loaderData = useLoaderData<LoaderData>();
     useEffect(() => {
         printPage(loaderData, 0, 0);
     }, []);
     return <div id={'print-page-root'}/>
 }
 
-
+type LoaderData = ((ReportModel & { recordSet?: any[] }) | undefined);
 
