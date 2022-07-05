@@ -27,7 +27,7 @@ export interface ColumnModel {
     rendererId: string, // this is the reference to RendererModel
     enabled: boolean,
     active: boolean,
-    width: number | string
+    width: number
 }
 
 // THIS IS REPORT MODEL
@@ -38,7 +38,9 @@ export interface ReportModel {
     queryId: string,
     securityCode: string[], // ADM.001.02.03.04
     columns: Array<ColumnModel>,
-    columnFilters: Array<ColumnFilterModel>
+    columnFilters: Array<ColumnFilterModel>,
+    paperSize : 'A5' | 'A4' | 'A3' | 'Letter' | 'Legal',
+    isLandscape : boolean
 }
 
 export interface ColumnFilterModel extends ColumnFilterGroupModel {

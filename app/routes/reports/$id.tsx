@@ -5,7 +5,7 @@ import {HeaderPanel} from "~/components/HeaderPanel";
 import {PlainWhitePanel} from "~/components/PlainWhitePanel";
 import {actionStateFunction, useRemixActionState} from "~/remix-hook-actionstate";
 import Label from "~/components/Label";
-import {Button, Checkbox, Collapse, Input, Select, Table, Tooltip} from "antd";
+import {Avatar, Button, Checkbox, Collapse, Input, InputNumber, Segmented, Select, Switch, Table, Tooltip} from "antd";
 import type {ColumnFilterModel, ColumnModel, QueryModel, RendererModel, ReportModel} from "~/db/model";
 import type {ActionFunction, LoaderFunction} from "@remix-run/node";
 import {json, redirect} from "@remix-run/node";
@@ -32,7 +32,8 @@ import {
 import {filterFunction} from "~/routes/reports/filterFunction";
 import type {ColumnsType} from "antd/lib/table";
 import mapFunction from "~/routes/reports/mapFunction";
-
+import {AiOutlineFile} from "react-icons/ai"
+import {BsInfoCircleFill} from "react-icons/bs";
 
 export const loader: LoaderFunction = async ({params}) => {
     const id = params.id;
@@ -47,10 +48,13 @@ export const loader: LoaderFunction = async ({params}) => {
         columns: [],
         securityCode: [],
         recordSet: [],
-        originalRecordSet: []
+        originalRecordSet: [],
+        paperSize : 'A4',
+        isLandscape : false
     };
     if (id !== 'new') {
         const reportData: ((ReportModel & { recordSet?: any[], originalRecordSet?: any[] }) | undefined) = db.reports?.find(r => r.id === id);
+        console.log('We have report data',reportData);
         invariant(reportData, 'Report data cannot be empty');
         const qry = db.queries?.find(q => q.id === reportData.queryId);
         invariant(qry, 'Query data cannot be empty');
@@ -70,7 +74,13 @@ export const loader: LoaderFunction = async ({params}) => {
     });
 }
 
-
+const PAPER_DIMENSION = {
+    A3 : {width : 297,height:420},
+    A4 : {width : 210,height:297},
+    A5 : {width : 148,height:210},
+    Letter : {width : 216,height:279},
+    Legal : {width : 216,height:356}
+}
 type StateType =
     ReportModel
     & { providers?: { queries?: QueryModel[], renderer?: RendererModel[] }, recordSet?: any[], originalRecordSet?: any[], errors?: ReportModel };
@@ -199,8 +209,8 @@ function ColumnsOrderAndSort(props: { columns: ColumnModel[], setState: Dispatch
                     const isFirstIndex = index === 0;
                     const isLastIndex = index === source.length - 1;
                     return <Horizontal key={col.key} mB={5}>
-                        <Vertical style={{border: '1px solid lightgrey', padding: '3px 5px', flexGrow: 1}} mR={5}
-                                  r={2}>
+                        <Vertical style={{borderBottom: '1px solid lightgrey', padding: '3px 5px', flexGrow: 1}} mR={5}
+                                  >
                             <Checkbox checked={selectedLeftColumns.includes(col.key)}
                                       onChange={(e) => {
                                           setSelectedLeftColumns(old => {
@@ -215,8 +225,16 @@ function ColumnsOrderAndSort(props: { columns: ColumnModel[], setState: Dispatch
                                       }}
                             >{col.name}</Checkbox>
                         </Vertical>
+                        <Vertical mR={5} w={120}>
+                            <InputNumber value={col.width} onChange={(val) => {
+                                setState(produce(state => {
+                                    const index = state.columns.findIndex(c => c.key === col.key);
+                                    state.columns[index].width = val;
+                                }));
+                            }} addonAfter={'mm'}/>
+                        </Vertical>
                         <Vertical style={{opacity: isLastIndex ? 0 : 1}} mR={5}>
-                            <Button onClick={() => {
+                            <Button type={"dashed"} onClick={() => {
                                 setState(produce(old => {
                                     const colIndex = old.columns.findIndex(c => c.key === col.key);
                                     const {nextActiveIndex} = old.columns.reduce((res, col, index) => {
@@ -238,7 +256,7 @@ function ColumnsOrderAndSort(props: { columns: ColumnModel[], setState: Dispatch
                             }} icon={<MdKeyboardArrowDown style={{fontSize: '1.5rem'}}/>}/>
                         </Vertical>
                         <Vertical style={{opacity: isFirstIndex ? 0 : 1}}>
-                            <Button icon={<MdKeyboardArrowUp style={{fontSize: '1.5rem'}}/>} onClick={() => {
+                            <Button type={"dashed"} icon={<MdKeyboardArrowUp style={{fontSize: '1.5rem'}} />} onClick={() => {
 
                                 setState(produce(old => {
                                     const colIndex = old.columns.findIndex(c => c.key === col.key);
@@ -303,7 +321,7 @@ function ColumnsOrderAndSort(props: { columns: ColumnModel[], setState: Dispatch
 
 
             {columns.filter(c => !c.active).map(col => {
-                return <Horizontal key={col.key} style={{border: '1px solid lightgrey', padding: '3px 5px'}} m={5}
+                return <Horizontal key={col.key} style={{borderBottom: '1px solid lightgrey', padding: '3px 5px'}} m={5}
                                    r={2}>
                     <Checkbox checked={selectedRightColumns.includes(col.key)} onChange={(e) => {
                         setSelectedRightColumns((old: string[]) => {
@@ -433,7 +451,117 @@ export default function ReportRoute() {
                                               </Collapse.Panel>
                                           </Collapse>
                                       }}/>
+                    <ActionStateValue selector={state => [state?.paperSize,state?.isLandscape]} render={([value,isLandscape]) => {
+                        const paperSize = value;
 
+                        return <Collapse defaultActiveKey={['1']} ghost>
+                            <Collapse.Panel header={`This report prints best on ${paperSize}-sized paper.`} key={1}>
+                                <Vertical>
+                                    <Horizontal mB={10}>
+                                        <Switch checkedChildren="Landscape" unCheckedChildren="Portrait" checked={isLandscape} onChange={(value) =>{
+                                            setState(oldVal => {
+                                                return {...oldVal,isLandscape:value}
+                                            })
+                                        }} />
+                                    </Horizontal>
+                                    <Horizontal>
+                                    <Segmented
+                                        value={paperSize}
+                                        onChange={(value:any) => {
+                                            setState(oldVal => {
+                                                return {...oldVal,paperSize:value}
+                                            });
+                                        }}
+
+                                        options={[
+                                            {
+                                                label: (
+                                                    <div style={{ padding: 4 }}>
+                                                        <Vertical position={"relative"}>
+                                                            <AiOutlineFile fontSize={'3rem'} style={{transform:isLandscape?'rotate(-90deg)':'none',transition:'transform 300ms ease-in-out'}}/>
+                                                            <Vertical position={'absolute'} top={0} left={0} w={'100%'} h={'100%'} hAlign={'center'} vAlign={'bottom'} pB={5}>
+                                                                <Vertical>A3</Vertical>
+                                                            </Vertical>
+                                                        </Vertical>
+
+                                                    </div>
+                                                ),
+                                                value: 'A3',
+                                            },
+                                            {
+                                                label: (
+                                                    <div style={{ padding: 4 }}>
+                                                        <Vertical position={"relative"}>
+                                                            <AiOutlineFile fontSize={'3rem'} style={{transform:isLandscape?'rotate(-90deg)':'none',transition:'transform 300ms ease-in-out'}}/>
+                                                            <Vertical position={'absolute'} top={0} left={0} w={'100%'} h={'100%'} hAlign={'center'} vAlign={'bottom'} pB={5}>
+                                                                <Vertical>A4</Vertical>
+                                                            </Vertical>
+                                                        </Vertical>
+
+                                                    </div>
+                                                ),
+                                                value: 'A4',
+                                            },
+                                            {
+                                                label: (
+                                                    <div style={{ padding: 4 }}>
+                                                        <Vertical position={"relative"}>
+                                                            <AiOutlineFile fontSize={'3rem'} style={{transform:isLandscape?'rotate(-90deg)':'none',transition:'transform 300ms ease-in-out'}}/>
+                                                            <Vertical position={'absolute'} top={0} left={0} w={'100%'} h={'100%'} hAlign={'center'} vAlign={'bottom'} pB={5}>
+                                                                <Vertical>A5</Vertical>
+                                                            </Vertical>
+                                                        </Vertical>
+
+                                                    </div>
+                                                ),
+                                                value: 'A5',
+                                            },
+                                            {
+                                                label: (
+                                                    <div style={{ padding: 4 }}>
+                                                        <Vertical position={"relative"}>
+                                                            <AiOutlineFile fontSize={'3rem'} style={{transform:isLandscape?'rotate(-90deg)':'none',transition:'transform 300ms ease-in-out'}}/>
+                                                            <Vertical position={'absolute'} top={0} left={0} w={'100%'} h={'100%'} hAlign={'center'} vAlign={'bottom'} pB={5}>
+                                                                <Vertical>Lttr</Vertical>
+                                                            </Vertical>
+                                                        </Vertical>
+
+                                                    </div>
+                                                ),
+                                                value: 'Letter',
+                                            },
+                                            {
+                                                label: (
+                                                    <div style={{ padding: 4 }}>
+                                                        <Vertical position={"relative"}>
+                                                            <AiOutlineFile fontSize={'3rem'} style={{transform:isLandscape?'rotate(-90deg)':'none',transition:'transform 300ms ease-in-out'}}/>
+                                                            <Vertical position={'absolute'} top={0} left={0} w={'100%'} h={'100%'} hAlign={'center'} vAlign={'bottom'} pB={5}>
+                                                                <Vertical>Lgl</Vertical>
+                                                            </Vertical>
+                                                        </Vertical>
+
+                                                    </div>
+                                                ),
+                                                value: 'Legal',
+                                            },
+                                        ]}
+                                    />
+                                    <Horizontal mL={10} style={{backgroundColor:'rgba(0,0,0,0.05)',borderLeft:'5px solid #BBB',padding:10,fontStyle:'italic'}} vAlign={'center'}>
+                                        <BsInfoCircleFill/>
+                                        <Vertical mL={10}>{$state.current?.paperSize} Size measures {PAPER_DIMENSION[$state.current?.paperSize||'A4']?.width} by {PAPER_DIMENSION[$state.current?.paperSize||'A4']?.height} millimeters.</Vertical>
+                                    </Horizontal>
+                                </Horizontal>
+
+
+                                </Vertical>
+                            </Collapse.Panel>
+                        </Collapse>
+                    }}/>
+
+                    <Vertical hAlign={'center'}>
+
+
+                    </Vertical>
                     <ActionStateValue selector={state => state?.columns} render={(columns: ColumnModel[]) => {
                         return <Collapse defaultActiveKey={['1']} ghost>
                             <Collapse.Panel key={1} header={'Columns Order & Sort'}>
@@ -481,14 +609,16 @@ export default function ReportRoute() {
 }
 
 function validateErrors(state: ReportModel) {
-    const errors: ReportModel = {
+    const errors: any = {
         id: '',
         name: '',
         queryId: '',
         columns: [],
         columnFilters: [],
         securityCode: [],
-        description: ''
+        description: '',
+        paperSize :'',
+        isLandscape : ''
     };
     if (!state.name) {
         errors.name = 'Name must not null';
@@ -569,6 +699,10 @@ export const action: ActionFunction = async ({request}) => {
             data.columns = state.columns;
             data.columnFilters = state.columnFilters;
             data.securityCode = state.securityCode;
+            data.paperSize = state.paperSize;
+            data.isLandscape = state.isLandscape;
+
+
             await persistDb();
             return json({...state, ...data, errors})
         } else {
@@ -580,6 +714,8 @@ export const action: ActionFunction = async ({request}) => {
             data.columns = state.columns;
             data.columnFilters = state.columnFilters;
             data.securityCode = state.securityCode;
+            data.paperSize = state.paperSize;
+            data.isLandscape = state.isLandscape;
             data.id = v4()
             db.reports = db.reports || [];
             db.reports.push(data);
