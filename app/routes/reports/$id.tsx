@@ -192,20 +192,21 @@ const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queri
     </Horizontal>;
 });
 
-function ColumnsOrderAndSort(props: { columns: ColumnModel[], setState: Dispatch<SetStateAction<StateType>> }) {
+function ColumnsOrderAndSort(props: { columns: ColumnModel[], setState: Dispatch<SetStateAction<StateType>>,columnsError:((any & ColumnModel)[]) }) {
 
     const {columns, setState} = props;
     const [selectedRightColumns, setSelectedRightColumns] = useState<string[]>([]);
     const [selectedLeftColumns, setSelectedLeftColumns] = useState<string[]>([]);
 
     return <Horizontal>
-        <Vertical style={{border: '1px solid lightgrey', padding: '5px', paddingTop: '15px', flexGrow: 1}} m={5}
+        <Vertical style={{border: '1px solid rgba(0,0,0,0.1)',boxShadow:'0 7px 10px -10px rgba(0,0,0,0.3)', padding: '10px', paddingTop: '15px', flexGrow: 1}} m={5}
                   r={2}
                   position={'relative'}>
             <Vertical top={-18} left={10} p={5} position={'absolute'} backgroundColor={'#fff'} style={{zIndex: 1}}>Active
                 Columns</Vertical>
             <Vertical>
                 {columns.filter(c => c.active).map((col, index, source) => {
+                    const error:ColumnModel = props?.columnsError?.find(c => c.key === col.key)
                     const isFirstIndex = index === 0;
                     const isLastIndex = index === source.length - 1;
                     return <Horizontal key={col.key} mB={5}>
@@ -226,12 +227,14 @@ function ColumnsOrderAndSort(props: { columns: ColumnModel[], setState: Dispatch
                             >{col.name}</Checkbox>
                         </Vertical>
                         <Vertical mR={5} w={120}>
-                            <InputNumber value={col.width} onChange={(val) => {
+                            <Tooltip title={error?.width}>
+                            <InputNumber status={error?.width ? 'error' : ''} value={col.width} onChange={(val) => {
                                 setState(produce(state => {
                                     const index = state.columns.findIndex(c => c.key === col.key);
                                     state.columns[index].width = val;
                                 }));
                             }} addonAfter={'mm'}/>
+                            </Tooltip>
                         </Vertical>
                         <Vertical style={{opacity: isLastIndex ? 0 : 1}} mR={5}>
                             <Button type={"dashed"} onClick={() => {
@@ -313,7 +316,7 @@ function ColumnsOrderAndSort(props: { columns: ColumnModel[], setState: Dispatch
 
         </Vertical>
 
-        <Vertical style={{border: '1px solid lightgrey', padding: '5px', paddingTop: '10px', width: 200}} m={5}
+        <Vertical style={{border: '1px solid rgba(0,0,0,0.1)',boxShadow:'0 7px 10px -10px rgba(0,0,0,0.3)', padding: '5px', paddingTop: '10px', width: 200}} m={5}
                   r={2}
                   position={'relative'}>
             <Vertical top={-18} left={10} p={5} position={'absolute'} backgroundColor={'#fff'} style={{zIndex: 1}}>In
@@ -565,7 +568,10 @@ export default function ReportRoute() {
                     <ActionStateValue selector={state => state?.columns} render={(columns: ColumnModel[]) => {
                         return <Collapse defaultActiveKey={['1']} ghost>
                             <Collapse.Panel key={1} header={'Columns Order & Sort'}>
-                                <ColumnsOrderAndSort columns={columns} setState={setState}/>
+                                {$state.current?.errors?.paperSize &&
+                                    <Vertical mB={15} style={{padding:10,color:'red',fontStyle:'italic',backgroundColor:'rgba(0,0,0,0.05)',borderLeft:'5px solid lightgrey' }}>{$state.current?.errors?.paperSize}</Vertical>
+                                }
+                                <ColumnsOrderAndSort columns={columns} setState={setState} columnsError={$state.current?.errors?.columns||[]}/>
                             </Collapse.Panel>
                         </Collapse>
                     }}/>
@@ -626,7 +632,29 @@ function validateErrors(state: ReportModel) {
     if (!state.queryId) {
         errors.queryId = 'Query Id must not null'
     }
+    if(!state.paperSize){
+        errors.queryId = 'Paper size must not null';
+    }
 
+    const dimension = PAPER_DIMENSION[state.paperSize];
+
+    let colsTotalWidth = 0;
+    state.columns.forEach(c => {
+        const error:any & ColumnModel = {};
+        if(c.active && c.enabled && !c.width){
+            error.width = 'Width is required';
+        }
+        const hasError = Object.values(error).some(err => err);
+        if (hasError) {
+            error.key = c.key;
+            errors.columns.push(error);
+        }
+        colsTotalWidth = colsTotalWidth + (c.width || 0);
+    });
+    const expectedWidth = state.isLandscape ? dimension.height : dimension.width;
+    if(colsTotalWidth !== expectedWidth){
+        errors.paperSize = `The total width of columns does not match the width of the page.${colsTotalWidth}mm instead of the expected ${expectedWidth}mm.`;
+    }
     state.columnFilters.forEach(c => {
         const error: any & ColumnFilterModel = {};
         if (!c.filterCondition) {
