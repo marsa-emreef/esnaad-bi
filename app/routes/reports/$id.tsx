@@ -5,7 +5,20 @@ import {HeaderPanel} from "~/components/HeaderPanel";
 import {PlainWhitePanel} from "~/components/PlainWhitePanel";
 import {actionStateFunction, useRemixActionState} from "~/remix-hook-actionstate";
 import Label from "~/components/Label";
-import {Avatar, Button, Checkbox, Collapse, Input, InputNumber, Segmented, Select, Switch, Table, Tooltip} from "antd";
+import {
+    Avatar,
+    Button,
+    Checkbox,
+    Collapse,
+    Input,
+    InputNumber,
+    Radio,
+    Segmented,
+    Select,
+    Switch,
+    Table,
+    Tooltip
+} from "antd";
 import type {ColumnFilterModel, ColumnModel, QueryModel, RendererModel, ReportModel} from "~/db/model";
 import type {ActionFunction, LoaderFunction} from "@remix-run/node";
 import {json, redirect} from "@remix-run/node";
@@ -50,11 +63,11 @@ export const loader: LoaderFunction = async ({params}) => {
         recordSet: [],
         originalRecordSet: [],
         paperSize : 'A4',
-        isLandscape : false
+        isLandscape : false,
+        padding : 5
     };
     if (id !== 'new') {
         const reportData: ((ReportModel & { recordSet?: any[], originalRecordSet?: any[] }) | undefined) = db.reports?.find(r => r.id === id);
-        console.log('We have report data',reportData);
         invariant(reportData, 'Report data cannot be empty');
         const qry = db.queries?.find(q => q.id === reportData.queryId);
         invariant(qry, 'Query data cannot be empty');
@@ -192,18 +205,19 @@ const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queri
     </Horizontal>;
 });
 
-function ColumnsOrderAndSort(props: { columns: ColumnModel[], setState: Dispatch<SetStateAction<StateType>>,columnsError:((any & ColumnModel)[]) }) {
+function ColumnsOrderAndSort(props: { columns: ColumnModel[], setState: Dispatch<SetStateAction<StateType>>,columnsError:((any & ColumnModel)[]),expectedColumnsWidth:number }) {
 
     const {columns, setState} = props;
     const [selectedRightColumns, setSelectedRightColumns] = useState<string[]>([]);
     const [selectedLeftColumns, setSelectedLeftColumns] = useState<string[]>([]);
-
+    const totalWidth = columns.filter(c => c.active).reduce((total,c) => total += (c.width??0),0);
+    const expectedColumnsWidth = props.expectedColumnsWidth;
+    const remainingGap = expectedColumnsWidth - totalWidth;
     return <Horizontal>
         <Vertical style={{border: '1px solid rgba(0,0,0,0.1)',boxShadow:'0 7px 10px -10px rgba(0,0,0,0.3)', padding: '10px', paddingTop: '15px', flexGrow: 1}} m={5}
                   r={2}
                   position={'relative'}>
-            <Vertical top={-18} left={10} p={5} position={'absolute'} backgroundColor={'#fff'} style={{zIndex: 1}}>Active
-                Columns</Vertical>
+            <Vertical top={-18} left={10} p={5} position={'absolute'} backgroundColor={'#fff'} style={{zIndex: 1}}>Active Columns</Vertical>
             <Vertical>
                 {columns.filter(c => c.active).map((col, index, source) => {
                     const error:ColumnModel = props?.columnsError?.find(c => c.key === col.key)
@@ -283,6 +297,9 @@ function ColumnsOrderAndSort(props: { columns: ColumnModel[], setState: Dispatch
                         </Vertical>
                     </Horizontal>
                 })}
+                {((expectedColumnsWidth - totalWidth) !== 0) &&
+                    <Vertical style={{fontStyle:'italic',color:'dodgerblue'}}>{expectedColumnsWidth - totalWidth}mm width remaining to be distributed.</Vertical>
+                }
             </Vertical>
         </Vertical>
 
@@ -454,20 +471,38 @@ export default function ReportRoute() {
                                               </Collapse.Panel>
                                           </Collapse>
                                       }}/>
-                    <ActionStateValue selector={state => [state?.paperSize,state?.isLandscape]} render={([value,isLandscape]) => {
+                    <ActionStateValue selector={state => [state?.paperSize,state?.isLandscape,state?.padding]} render={([value,isLandscape,padding]) => {
                         const paperSize = value;
-
+                        const columnsExpectedWidth:number = PAPER_DIMENSION[$state.current?.paperSize||'A4'][isLandscape?'height':'width']-(2*(padding ?? 0));
                         return <Collapse defaultActiveKey={['1']} ghost>
                             <Collapse.Panel header={`This report prints best on ${paperSize}-sized paper.`} key={1}>
                                 <Vertical>
-                                    <Horizontal mB={10}>
+                                    <Horizontal mB={10} vAlign={'center'}>
                                         <Switch checkedChildren="Landscape" unCheckedChildren="Portrait" checked={isLandscape} onChange={(value) =>{
                                             setState(oldVal => {
                                                 return {...oldVal,isLandscape:value}
                                             })
                                         }} />
+
                                     </Horizontal>
-                                    <Horizontal>
+                                    <Horizontal mB={5}>
+                                        <Vertical mR={10} >
+                                            Padding :
+                                        </Vertical>
+                                        <Vertical>
+                                            <Radio.Group value={$state.current?.padding} onChange={(value) => {
+                                                setState(oldVal => {
+                                                    return {...oldVal,padding:value.target.value}
+                                                })
+                                            }}>
+                                                <Radio value={5}>5mm</Radio>
+                                                <Radio value={10}>10mm</Radio>
+                                                <Radio value={15}>15mm</Radio>
+                                                <Radio value={20}>20mm</Radio>
+                                            </Radio.Group>
+                                        </Vertical>
+                                    </Horizontal>
+                                    <Horizontal mB={10}>
                                     <Segmented
                                         value={paperSize}
                                         onChange={(value:any) => {
@@ -475,7 +510,6 @@ export default function ReportRoute() {
                                                 return {...oldVal,paperSize:value}
                                             });
                                         }}
-
                                         options={[
                                             {
                                                 label: (
@@ -549,13 +583,11 @@ export default function ReportRoute() {
                                             },
                                         ]}
                                     />
-                                    <Horizontal mL={10} style={{backgroundColor:'rgba(0,0,0,0.05)',borderLeft:'5px solid #BBB',padding:10,fontStyle:'italic'}} vAlign={'center'}>
-                                        <BsInfoCircleFill/>
-                                        <Vertical mL={10}>{$state.current?.paperSize} Size measures {PAPER_DIMENSION[$state.current?.paperSize||'A4']?.width} by {PAPER_DIMENSION[$state.current?.paperSize||'A4']?.height} millimeters.</Vertical>
-                                    </Horizontal>
+
                                 </Horizontal>
-
-
+                                    <Vertical style={{backgroundColor:'rgba(0,0,0,0.05)',borderLeft:'5px solid #BBB',padding:10,fontStyle:'italic'}} vAlign={'center'} >
+                                        {$state.current?.paperSize} Size measures {PAPER_DIMENSION[$state.current?.paperSize||'A4']?.width} by {PAPER_DIMENSION[$state.current?.paperSize||'A4']?.height} millimeters. Due of the {padding}mm padding on the right and left sides of the page, which is {$state.current?.isLandscape?'landscape':'portrait'} oriented. Consequently, the column's available width is {columnsExpectedWidth} mm.
+                                    </Vertical>
                                 </Vertical>
                             </Collapse.Panel>
                         </Collapse>
@@ -565,13 +597,14 @@ export default function ReportRoute() {
 
 
                     </Vertical>
-                    <ActionStateValue selector={state => state?.columns} render={(columns: ColumnModel[]) => {
+                    <ActionStateValue selector={state => [state?.columns,state?.padding]} render={([columns,padding]) => {
+                        const expectedColumnsWidth:number = PAPER_DIMENSION[$state.current?.paperSize||'A4'][$state.current?.isLandscape?'height':'width']-(2*($state.current?.padding ?? 0));
                         return <Collapse defaultActiveKey={['1']} ghost>
                             <Collapse.Panel key={1} header={'Columns Order & Sort'}>
                                 {$state.current?.errors?.paperSize &&
                                     <Vertical mB={15} style={{padding:10,color:'red',fontStyle:'italic',backgroundColor:'rgba(0,0,0,0.05)',borderLeft:'5px solid lightgrey' }}>{$state.current?.errors?.paperSize}</Vertical>
                                 }
-                                <ColumnsOrderAndSort columns={columns} setState={setState} columnsError={$state.current?.errors?.columns||[]}/>
+                                <ColumnsOrderAndSort columns={columns} setState={setState} columnsError={$state.current?.errors?.columns||[]} expectedColumnsWidth={expectedColumnsWidth}/>
                             </Collapse.Panel>
                         </Collapse>
                     }}/>
@@ -586,6 +619,7 @@ export default function ReportRoute() {
                                                   title: col.name,
                                                   dataIndex: col.key,
                                                   key: col.key,
+                                                  width : col.width+'mm',
                                                   render: (value: any) => {
                                                       return <div dangerouslySetInnerHTML={{__html: value}}/>
                                                   }
@@ -649,9 +683,11 @@ function validateErrors(state: ReportModel) {
             error.key = c.key;
             errors.columns.push(error);
         }
-        colsTotalWidth = colsTotalWidth + (c.width || 0);
+        if(c.active && c.enabled){
+            colsTotalWidth = colsTotalWidth + (c.width || 0);
+        }
     });
-    const expectedWidth = state.isLandscape ? dimension.height : dimension.width;
+    const expectedWidth = (state.isLandscape ? dimension.height : dimension.width) - (2 * (state?.padding || 0));
     if(colsTotalWidth !== expectedWidth){
         errors.paperSize = `The total width of columns does not match the width of the page.${colsTotalWidth}mm instead of the expected ${expectedWidth}mm.`;
     }
@@ -729,6 +765,7 @@ export const action: ActionFunction = async ({request}) => {
             data.securityCode = state.securityCode;
             data.paperSize = state.paperSize;
             data.isLandscape = state.isLandscape;
+            data.padding = state.padding;
 
 
             await persistDb();
@@ -744,6 +781,7 @@ export const action: ActionFunction = async ({request}) => {
             data.securityCode = state.securityCode;
             data.paperSize = state.paperSize;
             data.isLandscape = state.isLandscape;
+            data.padding = state.padding;
             data.id = v4()
             db.reports = db.reports || [];
             db.reports.push(data);

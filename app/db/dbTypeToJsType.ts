@@ -1,5 +1,4 @@
 export function dbTypeToJsType(dbType: string) {
-    console.log('We have dbType', dbType);
     return dataTypeMapper[dbType];
 }
 

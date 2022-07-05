@@ -10,7 +10,6 @@ export async function loadDb(): Promise<DbModel> {
     try {
         await fs.stat(dbDirectory);
     } catch (err) {
-        console.log('Creating path now');
         await fs.mkdir(dbDirectory);
     }
     if (db === undefined) {

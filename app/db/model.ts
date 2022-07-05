@@ -40,7 +40,8 @@ export interface ReportModel {
     columns: Array<ColumnModel>,
     columnFilters: Array<ColumnFilterModel>,
     paperSize : 'A5' | 'A4' | 'A3' | 'Letter' | 'Legal',
-    isLandscape : boolean
+    isLandscape : boolean,
+    padding : number
 }
 
 export interface ColumnFilterModel extends ColumnFilterGroupModel {

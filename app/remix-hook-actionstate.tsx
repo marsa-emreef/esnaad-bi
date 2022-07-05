@@ -144,7 +144,23 @@ export function useRemixActionState<T extends object>(initValue?: (T | (() => T)
 
         function useActionStateValue<T>(selector: (param: T | undefined) => any) {
             const [value, setValue] = useState(() => selector($state.current as any));
-            useActionStateListener(selector, setValue);
+            useActionStateListener(selector, function setValueWrapper(userSuppliedValue:any){
+                setValue((oldVal:any) => {
+                    let newVal = userSuppliedValue;
+                    if(isFunction(newVal)){
+                        newVal = newVal.call(null,oldVal);
+                    }
+                    if(newVal !== oldVal && Array.isArray(newVal) && Array.isArray(oldVal) && newVal.length === oldVal.length){
+                        for (let i = 0; i < oldVal.length; i++) {
+                            if(oldVal[i] !== newVal[i]){
+                                return newVal;
+                            }
+                        }
+                        return oldVal;
+                    }
+                    return newVal;
+                })
+            } );
             return value;
         }
 
@@ -182,4 +198,8 @@ export function useRemixActionState<T extends object>(initValue?: (T | (() => T)
         ActionStateValue,
         Form
     }];
+}
+
+function isFunction(functionToCheck:any) {
+    return functionToCheck && {}.toString.call(functionToCheck) === '[object Function]';
 }
