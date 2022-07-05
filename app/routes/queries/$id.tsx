@@ -17,6 +17,7 @@ import {query} from "~/db/esnaad.server";
 import produce from "immer";
 import {v4} from "uuid";
 import {dbTypeToJsType} from "~/db/dbTypeToJsType";
+import {MdDeleteOutline, MdOutlineSave, MdPlayArrow} from "react-icons/md";
 
 export const loader: LoaderFunction = async ({params}) => {
     const id = params.id;
@@ -121,6 +122,7 @@ export default function QueriesRoute() {
         <Vertical p={20} style={{flexGrow: 1}} overflow={'auto'}>
             <Form method={'post'}>
                 <PlainWhitePanel>
+                    <p style={{backgroundColor:'rgba(0,0,0,0.05)',borderLeft:'5px solid #BBB',padding:10,fontStyle:'italic'}}>The Query data comprises information about the SQL query that will be executed against the database. In addition to being able to describe a SQL query in the query object, we can also define the columns we wish to enable, as well as the column's name and the renderer used to render the column.</p>
                     <Label label={'Name'}>
                         <ActionStateValue selector={state => state?.name} render={(value) => {
                             return <Tooltip title={errors?.name}>
@@ -166,12 +168,12 @@ export default function QueriesRoute() {
 
                     </Label>
                     <Horizontal hAlign={'right'}>
-                        <Button htmlType={'submit'} type={'primary'} name={'intent'} value={'runQuery'}>Run
+                        <Button htmlType={'submit'} type={'primary'} name={'intent'} value={'runQuery'} icon={<MdPlayArrow style={{marginRight:5,marginBottom:-5,fontSize:'1.2rem'}}/>}>Run
                             Query</Button>
                     </Horizontal>
                     <Divider orientation={"left"}>Column Mapping</Divider>
                     <ActionStateValue selector={state => state?.columns} render={(value) => {
-                        return <Table scroll={{x: true}} columns={[
+                        return <Table size={"small"} scroll={{x: true}} columns={[
                             {
                                 title: 'Enabled',
                                 dataIndex: 'enabled',
@@ -209,9 +211,9 @@ export default function QueriesRoute() {
                         return <Horizontal hAlign={'right'}>
                             {!isNew &&
                                 <Button type={'link'} htmlType={'submit'} style={{marginRight: 5}} name={'intent'}
-                                        value={'delete'}>Delete</Button>
+                                        value={'delete'} icon={<MdDeleteOutline style={{fontSize:'1.2rem',marginRight:5,marginBottom:-5}}/>}>Delete</Button>
                             }
-                            <Button type={'primary'} htmlType={'submit'} name={'intent'} value={'save'}>Save</Button>
+                            <Button type={'primary'} htmlType={'submit'} name={'intent'} value={'save'} icon={<MdOutlineSave style={{fontSize:'1.2rem',marginRight:5,marginBottom:-5}}/>}>Save</Button>
                         </Horizontal>
                     }}/>
                 </PlainWhitePanel>

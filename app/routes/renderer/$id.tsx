@@ -14,6 +14,7 @@ import {CodeEditor} from "~/components/CodeEditor";
 import {useEffect} from "react";
 import invariant from "tiny-invariant";
 import {v4} from "uuid";
+import {MdDeleteOutline, MdOutlineSave} from "react-icons/md";
 
 export const loader: LoaderFunction = async ({params}) => {
     const id = params.id;
@@ -51,6 +52,7 @@ export default function UpdateRendererRoute() {
         <Vertical p={20}>
             <Form method={'post'}>
                 <PlainWhitePanel>
+                    <p style={{backgroundColor:'rgba(0,0,0,0.05)',borderLeft:'5px solid #BBB',padding:10,fontStyle:'italic'}}>A renderer is an element used to render data.<br/> We can format a column whose starting value is a string as a date, a number, or a graph using the renderer.</p>
                     <LabelWidth width={120}>
                         <Label label={'Name'}>
                             <ActionStateValue selector={state => state?.name} render={(value) => {
@@ -117,10 +119,10 @@ export default function UpdateRendererRoute() {
                         return <Horizontal hAlign={'right'}>
                             {!isNew &&
                                 <Button htmlType={'submit'} name={'intent'} type={"link"} value={'delete'}
-                                        style={{marginRight: 5}}>Delete</Button>
+                                        style={{marginRight: 5}} icon={<MdDeleteOutline style={{fontSize:'1.2rem',marginRight:5,marginBottom:-5}}/>}>Delete</Button>
                             }
                             <Button htmlType={'submit'} name={'intent'} type={"primary"}
-                                    value={'save'}>{isNew ? 'Save' : 'Update'}</Button>
+                                    value={'save'} icon={<MdOutlineSave style={{fontSize:'1.2rem',marginRight:5,marginBottom:-5}}/>}>{isNew ? 'Save' : 'Update'}</Button>
                         </Horizontal>
                     }}/>
 

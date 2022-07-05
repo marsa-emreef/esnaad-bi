@@ -17,12 +17,17 @@ import invariant from "tiny-invariant";
 import {query} from "~/db/esnaad.server";
 import type {Dispatch, SetObserverAction} from "react-hook-useobserver";
 import produce from "immer";
+import {IoMdAddCircleOutline} from "react-icons/io";
+import {MdOutlineUpdate} from "react-icons/md";
 import {
     MdDelete,
     MdKeyboardArrowDown,
     MdKeyboardArrowLeft,
     MdKeyboardArrowRight,
-    MdKeyboardArrowUp
+    MdKeyboardArrowUp,
+    MdPlayArrow,
+    MdDeleteOutline,
+    MdOutlineSave
 } from "react-icons/md";
 import {filterFunction} from "~/routes/reports/filterFunction";
 import type {ColumnsType} from "antd/lib/table";
@@ -339,6 +344,8 @@ export default function ReportRoute() {
         <Vertical p={20} style={{flexGrow: 1}} overflow={'auto'}>
             <Form method={'post'}>
                 <PlainWhitePanel>
+                    <p style={{backgroundColor:'rgba(0,0,0,0.05)',borderLeft:'5px solid #BBB',padding:10,fontStyle:'italic'}}>Report is data that specifies how the report will be displayed. We can define the query that will be executed, as well as the columns that will be activated and their order. In addition, we can describe the paper size that will be used to print the report, as well as the size of each column based on the paper size.</p>
+
                     <Label label={'Name'}>
                         <ActionStateValue selector={state => state?.name} render={(value) => {
                             return <Tooltip title={errors?.name}>
@@ -380,15 +387,14 @@ export default function ReportRoute() {
                                     </Tooltip>
                                 }}/>
                             </Vertical>
-                            <Button htmlType={'submit'} name={'intent'} value={'runQuery'} type={'primary'}>Run
-                                Query</Button>
+                            <Button htmlType={'submit'} name={'intent'} value={'runQuery'} type={'primary'} icon={<MdPlayArrow style={{marginRight:5,marginBottom:-5,fontSize:'1.2rem'}}/>}>Run Query</Button>
                         </Horizontal>
                     </Label>
 
                     <ActionStateValue selector={state => state?.columnFilters}
                                       render={(columnFilters?: ColumnFilterModel[]) => {
                                           const appliedFilters = columnFilters?.length;
-                                          return <Collapse ghost>
+                                          return <Collapse defaultActiveKey={['1']} ghost>
                                               <Collapse.Panel header={`There were ${appliedFilters} filters used.`}
                                                               key={1}>
                                                   <Vertical>
@@ -406,8 +412,7 @@ export default function ReportRoute() {
                                                       <Horizontal hAlign={'right'}>
                                                           <Button type={"dashed"} style={{marginRight: 5}}
                                                                   htmlType={'submit'} name={'intent'}
-                                                                  value={'applyFilter'}>Implement the
-                                                              modifications</Button>
+                                                                  value={'applyFilter'} icon={<MdOutlineUpdate style={{fontSize:'1.2rem',marginBottom:-5,marginRight:5}}/>}>Apply Filter</Button>
                                                           <Button type={"primary"} onClick={() => {
                                                               setState(val => {
                                                                   const columnFilters = [...val?.columnFilters];
@@ -422,7 +427,7 @@ export default function ReportRoute() {
                                                                   columnFilters.push(colFilter);
                                                                   return {...val, columnFilters}
                                                               })
-                                                          }}>Add Filter</Button>
+                                                          }} icon={<IoMdAddCircleOutline style={{fontSize:'1.2rem',marginRight:5,marginBottom:-5}}/>}>Add Filter</Button>
                                                       </Horizontal>
                                                   </Vertical>
                                               </Collapse.Panel>
@@ -463,10 +468,10 @@ export default function ReportRoute() {
                         return <Horizontal hAlign={'right'}>
                             {!isNew &&
                                 <Button htmlType={'submit'} name={'intent'} type={"link"} value={'delete'}
-                                        style={{marginRight: 5}}>Delete</Button>
+                                        style={{marginRight: 5}} icon={<MdDeleteOutline style={{fontSize:'1.2rem',marginRight:5,marginBottom:-5}}/>}>Delete</Button>
                             }
                             <Button htmlType={'submit'} name={'intent'} type={"primary"}
-                                    value={'save'}>{isNew ? 'Save' : 'Update'}</Button>
+                                    value={'save'} icon={<MdOutlineSave style={{fontSize:'1.2rem',marginRight:5,marginBottom:-5}}/>}>{isNew ? 'Save' : 'Update'}</Button>
                         </Horizontal>
                     }}/>
                 </PlainWhitePanel>
