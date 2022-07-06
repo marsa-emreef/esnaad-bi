@@ -32,8 +32,26 @@ import {
 import {filterFunction} from "~/routes/reports/filterFunction";
 import mapFunction from "~/routes/reports/mapFunction";
 import {AiOutlineFile} from "react-icons/ai"
-import {ColumnsType} from "antd/lib/table";
+import type {ColumnsType} from "antd/lib/table";
 import PopConfirmSubmit from "~/components/PopConfirmSubmit";
+
+function createFilterColumnsDataProvider(parsedRecordSet: any[], reportData: ReportModel & { recordSet?: any[]; originalRecordSet?: any[] }) {
+    const result = parsedRecordSet.reduce<any>((result: any, record: any) => {
+        reportData.columns.forEach(c => {
+            if (c.enabled) {
+                const value = record[c.key];
+                result[c.key] = result[c.key] || [];
+                if(result[c.key].indexOf(value) <0 ){
+                    result[c.key].push(value);
+                }
+            }
+        })
+        return result;
+    }, {});
+    return result;
+}
+
+type CreateFilterColumnsDataProvider = ReturnType<typeof createFilterColumnsDataProvider>;
 
 export const loader: LoaderFunction = async ({params}) => {
     const id = params.id;
@@ -53,23 +71,28 @@ export const loader: LoaderFunction = async ({params}) => {
         isLandscape: false,
         padding: 5
     };
+    let filterColumnsDataProvider: CreateFilterColumnsDataProvider = new Map<string, Set<string>>();
     if (id !== 'new') {
         const reportData: ((ReportModel & { recordSet?: any[], originalRecordSet?: any[] }) | undefined) = db.reports?.find(r => r.id === id);
         invariant(reportData, 'Report data cannot be empty');
         const qry = db.queries?.find(q => q.id === reportData.queryId);
         invariant(qry, 'Query data cannot be empty');
         const queryData = await query(qry.sqlQuery);
-
-        reportData.recordSet = queryData.recordSet.map(mapFunction(qry.columns, db.renderer || [])).filter(filterFunction(reportData.columnFilters));
+        const parsedRecordSet = queryData.recordSet.map(mapFunction(qry.columns, db.renderer || []));
+        reportData.recordSet = parsedRecordSet.filter(filterFunction(reportData.columnFilters));
         reportData.originalRecordSet = queryData.recordSet;
 
+        //const filterColumnsDataProvider = uniqueSetColumnsData(queryData.recordSet,reportData.columns.map(c => c.enabled));
+        filterColumnsDataProvider = createFilterColumnsDataProvider(parsedRecordSet, reportData);
         data = reportData;
     }
+
     return json({
         ...data,
         providers: {
             queries: db.queries,
-            renderer: db.renderer
+            renderer: db.renderer,
+            filterColumns: filterColumnsDataProvider
         }
     });
 }
@@ -83,15 +106,27 @@ const PAPER_DIMENSION = {
 }
 type StateType =
     ReportModel
-    & { providers?: { queries?: QueryModel[], renderer?: RendererModel[] }, recordSet?: any[], originalRecordSet?: any[], errors?: ReportModel };
+    & { providers?: { queries?: QueryModel[], renderer?: RendererModel[], filterColumns?: CreateFilterColumnsDataProvider }, recordSet?: any[], originalRecordSet?: any[], errors?: ReportModel };
 
 const emptyArray: any = [];
 
-const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queries?: QueryModel[], queryId?: string, filter: ColumnFilterModel, setState: Dispatch<SetObserverAction<StateType>>, isEquals: boolean, isFreeText: boolean, originalRecordSet?: any[], renderers: RendererModel[], rowIndex: number }) {
-    const {filter, setState, isFreeText, isEquals, queries, queryId, originalRecordSet, renderers, rowIndex} = props;
+const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queries?: QueryModel[], queryId?: string, filter: ColumnFilterModel, setState: Dispatch<SetObserverAction<StateType>>, isEquals: boolean, isFreeText: boolean, originalRecordSet?: any[], renderers: RendererModel[], rowIndex: number, filterColumnsDataProvider?: CreateFilterColumnsDataProvider }) {
+    const {
+        filter,
+        setState,
+        isFreeText,
+        isEquals,
+        queries,
+        queryId,
+        originalRecordSet,
+        renderers,
+        rowIndex,
+        filterColumnsDataProvider
+    } = props;
     const query = queries?.find(qry => qry.id === queryId);
     const columns = query?.columns || emptyArray;
     const isFirstIndex = rowIndex === 0;
+    const columnKey = filter.columnKey;
     return <Horizontal key={filter.id} mB={10}>
         <Vertical w={100} style={{flexShrink: 0, backgroundColor: isFirstIndex ? 'rgba(0,0,0,0.05)' : 'none'}}>
             {!isFirstIndex &&
@@ -157,19 +192,13 @@ const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queri
                             return 0;
                         }}>
                     {useMemo(() => {
-                        return originalRecordSet?.map(mapFunction(columns, renderers)).reduce((set: Array<any>, data) => {
-                            const key = filter.columnKey;
-                            const val = data[key];
-                            if (set.indexOf(val) < 0) {
-                                set.push(val);
-                            }
-                            return set;
-                        }, []).map(val => {
+                        const optionsDataProvider = filterColumnsDataProvider[columnKey] || [];
+                        return optionsDataProvider.map((val:string) => {
                             return <Select.Option key={val} value={val}>
                                 <div dangerouslySetInnerHTML={{__html: val}}/>
                             </Select.Option>
                         })
-                    }, [columns, filter.columnKey, originalRecordSet, renderers])}
+                    }, [columnKey, filterColumnsDataProvider])}
                 </Select>
             </Vertical>
             <Vertical style={{display: isFreeText ? 'flex' : 'none'}}>
@@ -365,7 +394,8 @@ function ColumnsOrderAndSort(props: { columns: ColumnModel[], setState: Dispatch
 }
 
 export default function ReportRoute() {
-    const loaderData = useLoaderData<ReportModel & { providers: { queries: QueryModel[], renderer: RendererModel[] } }>();
+    const loaderData = useLoaderData<ReportModel & { providers: { queries: QueryModel[], renderer: RendererModel[], filterColumns?: CreateFilterColumnsDataProvider } }>();
+
     const [$state, setState, {
         Form,
         ActionStateValue
@@ -443,8 +473,8 @@ export default function ReportRoute() {
                     </Label>
 
                     <ActionStateValue
-                        selector={state => [state?.recordSet,state?.columnFilters, state?.paperSize, state?.isLandscape, state?.padding, state?.columns]}
-                        render={([recordSet,columnFilters, paperSize, isLandscape, padding, columns]: [recordSet:any[],columnFilters: ColumnFilterModel[], paperSize: 'A3' | 'A4' | 'A5', isLandscape: boolean, padding: number, columns: ColumnModel[]]) => {
+                        selector={state => [state?.recordSet, state?.columnFilters, state?.paperSize, state?.isLandscape, state?.padding, state?.columns]}
+                        render={([recordSet, columnFilters, paperSize, isLandscape, padding, columns]: [recordSet: any[], columnFilters: ColumnFilterModel[], paperSize: 'A3' | 'A4' | 'A5', isLandscape: boolean, padding: number, columns: ColumnModel[]]) => {
 
                             const columnsExpectedWidth: number = PAPER_DIMENSION[paperSize || 'A4'][isLandscape ? 'height' : 'width'] - (2 * (padding ?? 0));
 
@@ -454,13 +484,13 @@ export default function ReportRoute() {
                                     title: col.name,
                                     dataIndex: col.key,
                                     key: col.key,
-                                    width : col.width+'mm',
+                                    width: col.width + 'mm',
                                     render: (value: any) => {
                                         return <div dangerouslySetInnerHTML={{__html: value}}/>
                                     }
                                 }
                             });
-                            return <Collapse defaultActiveKey={['1', '2', '3','4']} style={{marginBottom:10}}>
+                            return <Collapse defaultActiveKey={['1', '2', '3', '4']} style={{marginBottom: 10}}>
                                 <Collapse.Panel header={`There were ${appliedFilters} filters used.`}
                                                 key={1}>
                                     <Vertical>
@@ -473,7 +503,9 @@ export default function ReportRoute() {
                                                 queryId={$state.current?.queryId}
                                                 originalRecordSet={$state.current?.originalRecordSet}
                                                 filter={filter} setState={setState} isEquals={isEquals}
-                                                isFreeText={isFreeText} key={filter.id} rowIndex={index}/>
+                                                isFreeText={isFreeText} key={filter.id} rowIndex={index}
+                                                filterColumnsDataProvider={loaderData.providers.filterColumns}
+                                            />
                                         })}
                                         <Horizontal hAlign={'right'}>
                                             <Button type={"dashed"} style={{marginRight: 5}}
@@ -659,13 +691,13 @@ export default function ReportRoute() {
                                             fontStyle: 'italic',
                                             backgroundColor: 'rgba(0,0,0,0.05)',
                                             borderLeft: '5px solid lightgrey'
-                                        }}>{paperSize}</Vertical>
+                                        }}>{$state.current?.errors?.paperSize}</Vertical>
                                     }
                                     <ColumnsOrderAndSort columns={columns} setState={setState}
                                                          columnsError={$state.current?.errors?.columns || []}
                                                          expectedColumnsWidth={columnsExpectedWidth}/>
                                 </Collapse.Panel>
-                                <Collapse.Panel key={4} header={'Report Preview'} >
+                                <Collapse.Panel key={4} header={'Report Preview'}>
 
                                     <Table scroll={{x: true, scrollToFirstRowOnChange: true}}
                                            columns={cols} dataSource={recordSet} size={"small"}/>
@@ -674,25 +706,30 @@ export default function ReportRoute() {
                         }}/>
 
 
-
-
                     <ActionStateValue selector={state => state?.id} render={(value) => {
                         const isNew = value === '';
                         return <Horizontal hAlign={'right'}>
                             {!isNew &&
-                                <PopConfirmSubmit title={`Are you sure you want to delete this report?`} okText={'Yes'} cancelText={'No'} placement={"topRight"} >
-                                <Button htmlType={'submit'} name={'intent'} type={"link"} value={'delete'}
-                                        style={{marginRight: 5}} icon={<MdDeleteOutline
-                                    style={{fontSize: '1.2rem', marginRight: 5, marginBottom: -5}}/>}>Delete</Button>
+                                <PopConfirmSubmit title={`Are you sure you want to delete this report?`} okText={'Yes'}
+                                                  cancelText={'No'} placement={"topRight"}>
+                                    <Button htmlType={'submit'} name={'intent'} type={"link"} value={'delete'}
+                                            style={{marginRight: 5}} icon={<MdDeleteOutline
+                                        style={{
+                                            fontSize: '1.2rem',
+                                            marginRight: 5,
+                                            marginBottom: -5
+                                        }}/>}>Delete</Button>
                                 </PopConfirmSubmit>
                             }
-                            <PopConfirmSubmit title={`Are you sure you want to ${isNew?'create new':'update the'} report?`} okText={'Yes'} cancelText={'No'} placement={"topRight"} >
-                            <Button htmlType={'submit'} name={'intent'} type={"primary"}
-                                    value={'save'} icon={<MdOutlineSave style={{
-                                fontSize: '1.2rem',
-                                marginRight: 5,
-                                marginBottom: -5
-                            }}/>}>{isNew ? 'Save' : 'Update'}</Button>
+                            <PopConfirmSubmit
+                                title={`Are you sure you want to ${isNew ? 'create new' : 'update the'} report?`}
+                                okText={'Yes'} cancelText={'No'} placement={"topRight"}>
+                                <Button htmlType={'submit'} name={'intent'} type={"primary"}
+                                        value={'save'} icon={<MdOutlineSave style={{
+                                    fontSize: '1.2rem',
+                                    marginRight: 5,
+                                    marginBottom: -5
+                                }}/>}>{isNew ? 'Save' : 'Update'}</Button>
                             </PopConfirmSubmit>
                         </Horizontal>
                     }}/>
@@ -742,7 +779,7 @@ function validateErrors(state: ReportModel) {
         }
     });
     const expectedWidth = (state.isLandscape ? dimension.height : dimension.width) - (2 * (state?.padding || 0));
-    if (state.columns && state.columns.length >0 && colsTotalWidth !== expectedWidth ) {
+    if (state.columns && state.columns.length > 0 && colsTotalWidth !== expectedWidth) {
         errors.paperSize = `The total width of columns does not match the width of the page.${colsTotalWidth}mm instead of the expected ${expectedWidth}mm.`;
     }
     state.columnFilters.forEach(c => {
@@ -780,26 +817,21 @@ export const action: ActionFunction = async ({request}) => {
     const state = await actionStateFunction<ReportModel & { recordSet: any[], originalRecordSet: any[] }>({formData});
     invariant(state, 'State cannot be empty');
     const intent = formData.get('intent');
-    console.log('Looking intent ',intent);
     const {errors, hasErrors} = validateErrors(state);
     if (hasErrors) {
-        console.log('We have errors shit ',errors);
         return json({...state, errors});
     }
     if (intent === 'runQuery') {
-        console.log('Looking columns SHIT');
         const db = await loadDb();
         const qry = db.queries?.find(q => q.id === state.queryId);
         invariant(qry, 'Query data must not null');
         const data = await query(qry.sqlQuery);
-        console.log('We have columns SHIT',qry.columns);
         return json({
             ...state,
             errors,
             recordSet: data.recordSet.map(mapFunction(qry.columns, db.renderer || [])).filter(filterFunction(state.columnFilters)),
             originalRecordSet: data.recordSet,
             columns: qry.columns.filter(c => {
-                console.log('Is it enabled ',c.enabled);
                 return c.enabled;
             })
         });
