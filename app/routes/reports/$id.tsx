@@ -1,11 +1,11 @@
 import type {SetStateAction} from "react";
-import {memo, useEffect, useMemo, useState} from "react";
+import {memo, useEffect, useMemo, useRef, useState} from "react";
 import {Horizontal, Vertical} from "react-hook-components";
 import {HeaderPanel} from "~/components/HeaderPanel";
 import {PlainWhitePanel} from "~/components/PlainWhitePanel";
 import {actionStateFunction, useRemixActionState} from "~/remix-hook-actionstate";
 import Label from "~/components/Label";
-import {Button, Checkbox, Collapse, Input, InputNumber, Radio, Segmented, Select, Switch, Table, Tooltip} from "antd";
+import {Button, Checkbox, Collapse, Input, InputNumber, Radio, Segmented, Select, Switch, Tooltip} from "antd";
 import type {ColumnFilterModel, ColumnModel, QueryModel, RendererModel, ReportModel} from "~/db/model";
 import type {ActionFunction, LoaderFunction} from "@remix-run/node";
 import {json, redirect} from "@remix-run/node";
@@ -32,16 +32,15 @@ import {
 import {filterFunction} from "~/routes/reports/filterFunction";
 import mapFunction from "~/routes/reports/mapFunction";
 import {AiOutlineFile} from "react-icons/ai"
-import type {ColumnsType} from "antd/lib/table";
 import PopConfirmSubmit from "~/components/PopConfirmSubmit";
 
-function createFilterColumnsDataProvider(parsedRecordSet: any[], columns: ColumnModel[] ) {
+function createFilterColumnsDataProvider(parsedRecordSet: any[], columns: ColumnModel[]) {
     const result = parsedRecordSet.reduce<any>((result: any, record: any) => {
         columns.forEach(c => {
             if (c.enabled) {
                 const value = record[c.key];
                 result[c.key] = result[c.key] || [];
-                if(result[c.key].indexOf(value) <0 ){
+                if (result[c.key].indexOf(value) < 0) {
                     result[c.key].push(value);
                 }
             }
@@ -191,7 +190,7 @@ const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queri
                         }}>
                     {useMemo(() => {
                         const optionsDataProvider = filterColumnsDataProvider[columnKey] || [];
-                        return optionsDataProvider.map((val:string) => {
+                        return optionsDataProvider.map((val: string) => {
                             return <Select.Option key={val} value={val}>
                                 <div dangerouslySetInnerHTML={{__html: val}}/>
                             </Select.Option>
@@ -219,7 +218,7 @@ const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queri
     </Horizontal>;
 });
 
-function ColumnsOrderAndSort(props: { columns: ColumnModel[], setState: Dispatch<SetStateAction<StateType>>, columnsError: ((any & ColumnModel)[])}) {
+function ColumnsOrderAndSort(props: { columns: ColumnModel[], setState: Dispatch<SetStateAction<StateType>>, columnsError: ((any & ColumnModel)[]) }) {
 
     const {columns, setState} = props;
     const [selectedRightColumns, setSelectedRightColumns] = useState<string[]>([]);
@@ -403,7 +402,8 @@ export default function ReportRoute() {
         setState(loaderData);
     }, [id, loaderData, setState]);
     const errors = $state.current?.errors;
-
+    const viewPortRef = useRef<HTMLDivElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
     return <Vertical h={'100%'}>
         <ActionStateValue selector={_ => $state?.current?.name || 'New Report'} render={(value) => {
             return <HeaderPanel title={value}/>
@@ -471,23 +471,11 @@ export default function ReportRoute() {
                     </Label>
 
                     <ActionStateValue
-                        selector={state => [state?.recordSet, state?.columnFilters, state?.paperSize, state?.isLandscape, state?.padding, state?.columns,state?.providers?.filterColumns]}
-                        render={([recordSet, columnFilters, paperSize, isLandscape, padding, columns,filterColumns]: [recordSet: any[], columnFilters: ColumnFilterModel[], paperSize: 'A3' | 'A4' | 'A5', isLandscape: boolean, padding: number, columns: ColumnModel[],filterColumns:any[]]) => {
-
-
+                        selector={state => [state?.recordSet, state?.columnFilters, state?.paperSize, state?.isLandscape, state?.padding, state?.columns, state?.providers?.filterColumns]}
+                        render={([recordSet, columnFilters, paperSize, isLandscape, padding, columns, filterColumns]: [recordSet: any[], columnFilters: ColumnFilterModel[], paperSize: 'A3' | 'A4' | 'A5', isLandscape: boolean, padding: number, columns: ColumnModel[], filterColumns: any[]]) => {
 
                             const appliedFilters = columnFilters?.length;
-                            const cols: ColumnsType<any> = columns?.filter(c => c.active).map(col => {
-                                return {
-                                    title: col.name,
-                                    dataIndex: col.key,
-                                    key: col.key,
-                                    width: col.width + '%',
-                                    render: (value: any) => {
-                                        return <div dangerouslySetInnerHTML={{__html: value}}/>
-                                    }
-                                }
-                            });
+                            const activeColumns: ColumnModel[] = columns?.filter(c => c.active);
                             return <Collapse defaultActiveKey={['1', '2', '3', '4']} style={{marginBottom: 10}}>
                                 <Collapse.Panel header={`There were ${appliedFilters} filters used.`}
                                                 key={1}>
@@ -690,12 +678,47 @@ export default function ReportRoute() {
                                     }
                                     <ColumnsOrderAndSort columns={columns} setState={setState}
                                                          columnsError={$state.current?.errors?.columns || []}
-                                                         />
+                                    />
                                 </Collapse.Panel>
                                 <Collapse.Panel key={4} header={'Report Preview'}>
-
-                                    <Table scroll={{x: true, scrollToFirstRowOnChange: true}}
-                                           columns={cols} dataSource={recordSet} size={"small"}/>
+                                    <Vertical ref={viewPortRef} h={400} w={'100%'} overflow={"auto"}
+                                              onScroll={(event) => {
+                                                  const scrollPosition = (event.target as any).scrollLeft;
+                                                  const atBeginning = scrollPosition === 0;
+                                                  const viewPortWidth = Math.round(viewPortRef.current?.getBoundingClientRect()?.width || 0);
+                                                  const containerWidth = Math.floor(containerRef.current?.getBoundingClientRect()?.width || 0);
+                                                  const atLast = (scrollPosition + viewPortWidth) >= (containerWidth);
+                                                  invariant(viewPortRef?.current, 'Container ref must not null');
+                                                  if (atBeginning) {
+                                                      viewPortRef.current.style.boxShadow = '-8px 0px 10px -8px rgba(0,0,0,0.1) inset';
+                                                  } else if (atLast) {
+                                                      viewPortRef.current.style.boxShadow = '8px 0 10px -8px rgba(0,0,0,0.1) inset';
+                                                  } else {
+                                                      viewPortRef.current.style.boxShadow = '-8px 0px 10px -8px rgba(0,0,0,0.1) inset,8px 0 10px -8px rgba(0,0,0,0.1) inset';
+                                                  }
+                                              }}>
+                                        <Vertical ref={containerRef} style={{
+                                            width: PAPER_DIMENSION[paperSize][isLandscape ? 'height' : 'width'] + 'mm',
+                                            height: '100%'
+                                        }}>
+                                            <Horizontal>
+                                                {activeColumns.map(col => {
+                                                    return <Vertical style={{width: col.width + '%',flexGrow:0,flexShrink:0}}
+                                                                     key={col.key}>{col.name}</Vertical>
+                                                })}
+                                            </Horizontal>
+                                            {recordSet.filter((_,index) => index < 100).map((record,rowIndex) => {
+                                                return <Horizontal key={rowIndex}>
+                                                    {activeColumns.map(col => {
+                                                        return <Vertical style={{width: col.width + '%',flexGrow:0,flexShrink:0}}
+                                                                         key={rowIndex+'-'+col.key} dangerouslySetInnerHTML={{__html:record[col.key]}}/>
+                                                    })}
+                                                </Horizontal>
+                                            })}
+                                        </Vertical>
+                                    </Vertical>
+                                    {/*<Table scroll={{x: true, scrollToFirstRowOnChange: true}} style={{width:'810mm'}}*/}
+                                    {/*       columns={cols} dataSource={recordSet} size={"small"}/>*/}
                                 </Collapse.Panel>
                             </Collapse>
                         }}/>
@@ -756,8 +779,6 @@ function validateErrors(state: ReportModel) {
         errors.queryId = 'Paper size must not null';
     }
 
-    const dimension = PAPER_DIMENSION[state.paperSize];
-
     let colsTotalWidth = 0;
     state.columns.forEach(c => {
         const error: any & ColumnModel = {};
@@ -774,9 +795,6 @@ function validateErrors(state: ReportModel) {
         }
     });
 
-    if (state.columns && state.columns.length > 0 && colsTotalWidth !== 100) {
-        errors.paperSize = `The total percentage of columns is ${colsTotalWidth}% instead of the expected 100%.`;
-    }
     state.columnFilters.forEach(c => {
         const error: any & ColumnFilterModel = {};
         if (!c.filterCondition) {
@@ -809,7 +827,7 @@ function validateErrors(state: ReportModel) {
 
 export const action: ActionFunction = async ({request}) => {
     const formData = await request.formData();
-    const state = await actionStateFunction<ReportModel & { recordSet: any[], originalRecordSet: any[],providers:{filterColumns:any} }>({formData});
+    const state = await actionStateFunction<ReportModel & { recordSet: any[], originalRecordSet: any[], providers: { filterColumns: any } }>({formData});
     invariant(state, 'State cannot be empty');
     const intent = formData.get('intent');
     const {errors, hasErrors} = validateErrors(state);
@@ -818,7 +836,7 @@ export const action: ActionFunction = async ({request}) => {
     }
     if (intent === 'runQuery') {
         const db = await loadDb();
-        const qry:QueryModel|undefined = db.queries?.find(q => q.id === state.queryId);
+        const qry: QueryModel | undefined = db.queries?.find(q => q.id === state.queryId);
         invariant(qry, 'Query data must not null');
         const data = await query(qry.sqlQuery);
         const parsedRecordSet = data.recordSet.map(mapFunction(qry.columns, db.renderer || []));
@@ -841,7 +859,7 @@ export const action: ActionFunction = async ({request}) => {
         invariant(qry, 'Query data must not null');
         const columnFilters = state.columnFilters;
         const recordSet = state.originalRecordSet.map(mapFunction(qry.columns, db.renderer || [])).filter(filterFunction(columnFilters));
-        return json({...state, recordSet,errors});
+        return json({...state, recordSet, errors});
     }
     if (intent === 'save') {
         const db = await loadDb();
