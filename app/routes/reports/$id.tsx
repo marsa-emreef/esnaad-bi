@@ -35,9 +35,9 @@ import {AiOutlineFile} from "react-icons/ai"
 import type {ColumnsType} from "antd/lib/table";
 import PopConfirmSubmit from "~/components/PopConfirmSubmit";
 
-function createFilterColumnsDataProvider(parsedRecordSet: any[], reportData: ReportModel & { recordSet?: any[]; originalRecordSet?: any[] }) {
+function createFilterColumnsDataProvider(parsedRecordSet: any[], columns: ColumnModel[] ) {
     const result = parsedRecordSet.reduce<any>((result: any, record: any) => {
-        reportData.columns.forEach(c => {
+        columns.forEach(c => {
             if (c.enabled) {
                 const value = record[c.key];
                 result[c.key] = result[c.key] || [];
@@ -83,7 +83,7 @@ export const loader: LoaderFunction = async ({params}) => {
         reportData.originalRecordSet = queryData.recordSet;
 
         //const filterColumnsDataProvider = uniqueSetColumnsData(queryData.recordSet,reportData.columns.map(c => c.enabled));
-        filterColumnsDataProvider = createFilterColumnsDataProvider(parsedRecordSet, reportData);
+        filterColumnsDataProvider = createFilterColumnsDataProvider(parsedRecordSet, reportData.columns);
         data = reportData;
     }
 
@@ -118,8 +118,6 @@ const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queri
         isEquals,
         queries,
         queryId,
-        originalRecordSet,
-        renderers,
         rowIndex,
         filterColumnsDataProvider
     } = props;
@@ -473,8 +471,8 @@ export default function ReportRoute() {
                     </Label>
 
                     <ActionStateValue
-                        selector={state => [state?.recordSet, state?.columnFilters, state?.paperSize, state?.isLandscape, state?.padding, state?.columns]}
-                        render={([recordSet, columnFilters, paperSize, isLandscape, padding, columns]: [recordSet: any[], columnFilters: ColumnFilterModel[], paperSize: 'A3' | 'A4' | 'A5', isLandscape: boolean, padding: number, columns: ColumnModel[]]) => {
+                        selector={state => [state?.recordSet, state?.columnFilters, state?.paperSize, state?.isLandscape, state?.padding, state?.columns,state?.providers?.filterColumns]}
+                        render={([recordSet, columnFilters, paperSize, isLandscape, padding, columns,filterColumns]: [recordSet: any[], columnFilters: ColumnFilterModel[], paperSize: 'A3' | 'A4' | 'A5', isLandscape: boolean, padding: number, columns: ColumnModel[],filterColumns:any[]]) => {
 
                             const columnsExpectedWidth: number = PAPER_DIMENSION[paperSize || 'A4'][isLandscape ? 'height' : 'width'] - (2 * (padding ?? 0));
 
@@ -504,7 +502,7 @@ export default function ReportRoute() {
                                                 originalRecordSet={$state.current?.originalRecordSet}
                                                 filter={filter} setState={setState} isEquals={isEquals}
                                                 isFreeText={isFreeText} key={filter.id} rowIndex={index}
-                                                filterColumnsDataProvider={loaderData.providers.filterColumns}
+                                                filterColumnsDataProvider={filterColumns}
                                             />
                                         })}
                                         <Horizontal hAlign={'right'}>
@@ -814,7 +812,7 @@ function validateErrors(state: ReportModel) {
 
 export const action: ActionFunction = async ({request}) => {
     const formData = await request.formData();
-    const state = await actionStateFunction<ReportModel & { recordSet: any[], originalRecordSet: any[] }>({formData});
+    const state = await actionStateFunction<ReportModel & { recordSet: any[], originalRecordSet: any[],providers:{filterColumns:any} }>({formData});
     invariant(state, 'State cannot be empty');
     const intent = formData.get('intent');
     const {errors, hasErrors} = validateErrors(state);
@@ -823,17 +821,20 @@ export const action: ActionFunction = async ({request}) => {
     }
     if (intent === 'runQuery') {
         const db = await loadDb();
-        const qry = db.queries?.find(q => q.id === state.queryId);
+        const qry:QueryModel|undefined = db.queries?.find(q => q.id === state.queryId);
         invariant(qry, 'Query data must not null');
         const data = await query(qry.sqlQuery);
-        return json({
+        const parsedRecordSet = data.recordSet.map(mapFunction(qry.columns, db.renderer || []));
+        const columns = qry.columns.filter(c => c.enabled);
+        const filterColumnsDataProvider = createFilterColumnsDataProvider(parsedRecordSet, columns);
+        state.providers.filterColumns = filterColumnsDataProvider;
+
+        return json<StateType>({
             ...state,
             errors,
-            recordSet: data.recordSet.map(mapFunction(qry.columns, db.renderer || [])).filter(filterFunction(state.columnFilters)),
+            recordSet: parsedRecordSet.filter(filterFunction(state.columnFilters)),
             originalRecordSet: data.recordSet,
-            columns: qry.columns.filter(c => {
-                return c.enabled;
-            })
+            columns
         });
     }
 
@@ -843,7 +844,7 @@ export const action: ActionFunction = async ({request}) => {
         invariant(qry, 'Query data must not null');
         const columnFilters = state.columnFilters;
         const recordSet = state.originalRecordSet.map(mapFunction(qry.columns, db.renderer || [])).filter(filterFunction(columnFilters));
-        return json({...state, recordSet});
+        return json({...state, recordSet,errors});
     }
     if (intent === 'save') {
         const db = await loadDb();
@@ -859,7 +860,6 @@ export const action: ActionFunction = async ({request}) => {
             data.paperSize = state.paperSize;
             data.isLandscape = state.isLandscape;
             data.padding = state.padding;
-
 
             await persistDb();
             return json({...state, ...data, errors})
