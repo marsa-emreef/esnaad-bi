@@ -699,26 +699,27 @@ export default function ReportRoute() {
                                               }}>
                                         <Vertical ref={containerRef} style={{
                                             width: PAPER_DIMENSION[paperSize][isLandscape ? 'height' : 'width'] + 'mm',
-                                            height: '100%'
+                                            padding : padding+'mm',
+                                            height: '100%',
+                                            fontSize:'12px',
+                                            lineHeight:'13px'
                                         }}>
-                                            <Horizontal>
+                                            <Horizontal style={{borderBottom:'1px solid lightgray'}}>
                                                 {activeColumns.map(col => {
-                                                    return <Vertical style={{width: col.width + '%',flexGrow:0,flexShrink:0}}
+                                                    return <Vertical style={{width: col.width + '%',flexGrow:0,flexShrink:0,fontWeight:'bold',padding:'5px 3px'}}
                                                                      key={col.key}>{col.name}</Vertical>
                                                 })}
                                             </Horizontal>
                                             {recordSet.filter((_,index) => index < 100).map((record,rowIndex) => {
-                                                return <Horizontal key={rowIndex}>
-                                                    {activeColumns.map(col => {
-                                                        return <Vertical style={{width: col.width + '%',flexGrow:0,flexShrink:0}}
+                                                return <Horizontal key={rowIndex} style={{borderBottom:'1px solid lightgray'}}>
+                                                    {activeColumns.map((col,index) => {
+                                                        return <Vertical style={{width: col.width + '%',flexGrow:0,flexShrink:0,padding:3,borderRight:'1px solid lightgray',borderLeft:index ===0 ? '1px solid lightgray':''}}
                                                                          key={rowIndex+'-'+col.key} dangerouslySetInnerHTML={{__html:record[col.key]}}/>
                                                     })}
                                                 </Horizontal>
                                             })}
                                         </Vertical>
                                     </Vertical>
-                                    {/*<Table scroll={{x: true, scrollToFirstRowOnChange: true}} style={{width:'810mm'}}*/}
-                                    {/*       columns={cols} dataSource={recordSet} size={"small"}/>*/}
                                 </Collapse.Panel>
                             </Collapse>
                         }}/>
