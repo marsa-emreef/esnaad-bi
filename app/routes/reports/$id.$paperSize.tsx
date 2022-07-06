@@ -91,7 +91,7 @@ function printTable(loaderData: ((ReportModel & { recordSet?: any[] }) | undefin
 <div id="print-page-${pageCount}" style="display: flex;flex-direction: column;flex-grow: 1">
     <div style="display: flex;flex-direction: column">
         <div id="print-page-thead-${pageCount}" style="display: flex;flex-direction: row;font-weight: bold;border-bottom: 1px solid lightgray;background-color: #444;color: #fff;-webkit-print-color-adjust: exact; ">
-            ${loaderData?.columns.filter(c => c.active).map(column => `<div style="width: ${column.width || '0'}mm;flex-shrink: 0;flex-grow: 0;padding: 5px 3px">${column.name}</div>`).join('')}
+            ${loaderData?.columns.filter(c => c.active).map(column => `<div style="width: ${column.width || '0'}%;flex-shrink: 0;flex-grow: 0;padding: 5px 3px">${column.name}</div>`).join('')}
         </div>
         <div id="print-page-tbody-${pageCount}">
         
@@ -128,7 +128,7 @@ function printPage(loaderData: LoaderData, pageCount: number, rowIndex: number) 
         rowElementDraft.setAttribute('id', 'print-page-tr-' + index);
         rowElementDraft.setAttribute('style', 'display:flex;width:100%;border-bottom:1px solid lightgray;');
         rowElementDraft.innerHTML = loaderData?.columns.filter((c: ColumnModel) => c.active).map((column: ColumnModel, colIndex) => {
-            return `<div style="width: ${column.width || ''}mm;flex-shrink: 0;flex-grow: 0;border-right: 1px solid lightgray;padding:3px;border-left: ${colIndex === 0 ? '1px solid lightgrey' : ''}">${record[column.key] ?? ''}</div>`
+            return `<div style="width: ${column.width || ''}%;flex-shrink: 0;flex-grow: 0;border-right: 1px solid lightgray;padding:3px;border-left: ${colIndex === 0 ? '1px solid lightgrey' : ''}">${record[column.key] ?? ''}</div>`
             // return `<div style="width: ${column.width || ''}mm;flex-shrink: 0;flex-grow: 0;text-overflow: ellipsis;overflow: hidden;border-right: 1px solid lightgray;padding:3px;border-left: ${colIndex === 0 ? '1px solid lightgrey' : ''}">${record[column.key] ?? ''}</div>`
         }).join('') || '';
         tableBody?.appendChild(rowElementDraft);

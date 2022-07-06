@@ -219,14 +219,14 @@ const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queri
     </Horizontal>;
 });
 
-function ColumnsOrderAndSort(props: { columns: ColumnModel[], setState: Dispatch<SetStateAction<StateType>>, columnsError: ((any & ColumnModel)[]), expectedColumnsWidth: number }) {
+function ColumnsOrderAndSort(props: { columns: ColumnModel[], setState: Dispatch<SetStateAction<StateType>>, columnsError: ((any & ColumnModel)[])}) {
 
     const {columns, setState} = props;
     const [selectedRightColumns, setSelectedRightColumns] = useState<string[]>([]);
     const [selectedLeftColumns, setSelectedLeftColumns] = useState<string[]>([]);
-    const totalWidth = columns.filter(c => c.active).reduce((total, c) => total += (c.width ?? 0), 0);
-    const expectedColumnsWidth = props.expectedColumnsWidth;
-    const remainingGap = expectedColumnsWidth - totalWidth;
+    const totalWidth = columns?.filter(c => c.active)?.reduce((total, c) => total += (c.width ?? 0), 0) || 0;
+    const expectedColumnsWidth = 100;
+
     return <Horizontal>
         <Vertical style={{
             border: '1px solid rgba(0,0,0,0.1)',
@@ -261,14 +261,14 @@ function ColumnsOrderAndSort(props: { columns: ColumnModel[], setState: Dispatch
                                       }}
                             >{col.name}</Checkbox>
                         </Vertical>
-                        <Vertical mR={5} w={120}>
+                        <Vertical mR={5} w={100}>
                             <Tooltip title={error?.width}>
                                 <InputNumber status={error?.width ? 'error' : ''} value={col.width} onChange={(val) => {
                                     setState(produce(state => {
                                         const index = state.columns.findIndex(c => c.key === col.key);
                                         state.columns[index].width = val;
                                     }));
-                                }} addonAfter={'mm'}/>
+                                }} addonAfter={'%'}/>
                             </Tooltip>
                         </Vertical>
                         <Vertical style={{opacity: isLastIndex ? 0 : 1}} mR={5}>
@@ -320,8 +320,8 @@ function ColumnsOrderAndSort(props: { columns: ColumnModel[], setState: Dispatch
                     </Horizontal>
                 })}
                 {((expectedColumnsWidth - totalWidth) !== 0) &&
-                    <Vertical style={{fontStyle: 'italic', color: 'dodgerblue'}}>{expectedColumnsWidth - totalWidth}mm
-                        width remaining to be distributed.</Vertical>
+                    <Vertical style={{fontStyle: 'italic', color: 'dodgerblue'}}>{expectedColumnsWidth - totalWidth}%
+                        remaining to be distributed.</Vertical>
                 }
             </Vertical>
         </Vertical>
@@ -474,7 +474,7 @@ export default function ReportRoute() {
                         selector={state => [state?.recordSet, state?.columnFilters, state?.paperSize, state?.isLandscape, state?.padding, state?.columns,state?.providers?.filterColumns]}
                         render={([recordSet, columnFilters, paperSize, isLandscape, padding, columns,filterColumns]: [recordSet: any[], columnFilters: ColumnFilterModel[], paperSize: 'A3' | 'A4' | 'A5', isLandscape: boolean, padding: number, columns: ColumnModel[],filterColumns:any[]]) => {
 
-                            const columnsExpectedWidth: number = PAPER_DIMENSION[paperSize || 'A4'][isLandscape ? 'height' : 'width'] - (2 * (padding ?? 0));
+
 
                             const appliedFilters = columnFilters?.length;
                             const cols: ColumnsType<any> = columns?.filter(c => c.active).map(col => {
@@ -482,7 +482,7 @@ export default function ReportRoute() {
                                     title: col.name,
                                     dataIndex: col.key,
                                     key: col.key,
-                                    width: col.width + 'mm',
+                                    width: col.width + '%',
                                     render: (value: any) => {
                                         return <div dangerouslySetInnerHTML={{__html: value}}/>
                                     }
@@ -675,9 +675,6 @@ export default function ReportRoute() {
                                         }} vAlign={'center'}>
                                             {paperSize} Size
                                             measures {PAPER_DIMENSION[paperSize || 'A4']?.width} by {PAPER_DIMENSION[paperSize || 'A4']?.height} millimeters.
-                                            Due of the {padding}mm padding on the right and left sides of the page,
-                                            which is {$state.current?.isLandscape ? 'landscape' : 'portrait'} oriented.
-                                            Consequently, the column's available width is {columnsExpectedWidth} mm.
                                         </Vertical>
                                     </Vertical>
                                 </Collapse.Panel>
@@ -693,7 +690,7 @@ export default function ReportRoute() {
                                     }
                                     <ColumnsOrderAndSort columns={columns} setState={setState}
                                                          columnsError={$state.current?.errors?.columns || []}
-                                                         expectedColumnsWidth={columnsExpectedWidth}/>
+                                                         />
                                 </Collapse.Panel>
                                 <Collapse.Panel key={4} header={'Report Preview'}>
 
@@ -776,9 +773,9 @@ function validateErrors(state: ReportModel) {
             colsTotalWidth = colsTotalWidth + (c.width || 0);
         }
     });
-    const expectedWidth = (state.isLandscape ? dimension.height : dimension.width) - (2 * (state?.padding || 0));
-    if (state.columns && state.columns.length > 0 && colsTotalWidth !== expectedWidth) {
-        errors.paperSize = `The total width of columns does not match the width of the page.${colsTotalWidth}mm instead of the expected ${expectedWidth}mm.`;
+
+    if (state.columns && state.columns.length > 0 && colsTotalWidth !== 100) {
+        errors.paperSize = `The total percentage of columns is ${colsTotalWidth}% instead of the expected 100%.`;
     }
     state.columnFilters.forEach(c => {
         const error: any & ColumnFilterModel = {};
