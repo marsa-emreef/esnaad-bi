@@ -1,8 +1,8 @@
 import React, {createContext, useCallback, useContext, useEffect, useMemo, useRef, useState} from "react";
 import type {Observer} from "react-hook-useobserver";
-import {ObserverValue, useObserver} from "react-hook-useobserver";
-import type {FormProps} from "@remix-run/react";
-import {Form as RemixForm, useActionData} from "@remix-run/react";
+import {emptyObserver, emptySetObserver, ObserverValue, useObserver} from "react-hook-useobserver";
+import type {FormProps, SubmitFunction} from "@remix-run/react";
+import {Form as RemixForm, useActionData, useSubmit} from "@remix-run/react";
 
 /**
  * we can use actionStateFunction in remix actionFunction to obtain the action state.
@@ -64,17 +64,18 @@ export type UseActionStateValue<T> = (selector: (param?: T) => any) => any;
 /**
  * FormContext to get the value of the action state
  */
-const FormContext = createContext<any>([]);
+const FormContext = createContext<RemixActionStateInFormHookType<any>>([] as any);
 
-
+type RemixActionStateInFormHookType<T> = [Observer<T | undefined>, React.Dispatch<React.SetStateAction<T>>, {
+    useActionStateListener: UseActionStateListener<T>,
+    useActionStateValue: UseActionStateValue<T>,
+    ActionStateValue: ActionStateValueFC<T>,
+    submit:SubmitFunction
+}];
 /**
  * Hooks to get the formState by using the remix action state
  */
-export function useRemixActionStateInForm<T>(): [Observer<T | undefined>, React.Dispatch<React.SetStateAction<T>>, {
-    useActionStateListener: UseActionStateListener<T>,
-    useActionStateValue: UseActionStateValue<T>,
-    ActionStateValue: ActionStateValueFC<T>
-}] {
+export function useRemixActionStateInForm<T>():RemixActionStateInFormHookType<T>  {
     const [state, setState, config] = useContext(FormContext);
     return [state, setState, config];
 }
@@ -100,12 +101,21 @@ export function useRemixActionState<T extends object>(initValue?: (T | (() => T)
     useActionStateListener: UseActionStateListener<T | undefined>,
     useActionStateValue: UseActionStateValue<T>,
     ActionStateValue: ActionStateValueFC<T>,
-    Form: React.FC<FormProps & React.RefAttributes<HTMLFormElement>>
+    Form: React.FC<FormProps & React.RefAttributes<HTMLFormElement>>,
+    submit : SubmitFunction
 }] {
 
     const actionData = useActionData<T>();
     const isMounted = useRef(false);
     const [$state, setState] = useObserver<T | undefined>(initValue);
+    const remixSubmit = useSubmit();
+    const hiddenActionStateRef = useRef<HTMLInputElement | null>(null);
+
+    const submit:SubmitFunction = useCallback((props,options) => {
+        const value = JSON.stringify($state.current);
+        hiddenActionStateRef.current?.setAttribute('value', value);
+        remixSubmit(props,options)
+    },[$state, remixSubmit]);
 
     useEffect(() => {
         if (!isMounted.current) {
@@ -170,7 +180,7 @@ export function useRemixActionState<T extends object>(initValue?: (T | (() => T)
         }
 
         function Form(props: FormProps & React.RefAttributes<HTMLFormElement>) {
-            const hiddenActionStateRef = useRef<HTMLInputElement | null>(null);
+
             const onSubmit = props.onSubmit;
             const onSubmitCallback = useCallback((event) => {
                 if (onSubmit) onSubmit(event);
@@ -179,7 +189,7 @@ export function useRemixActionState<T extends object>(initValue?: (T | (() => T)
             }, [onSubmit]);
             return <RemixForm {...props} onSubmit={onSubmitCallback}>
                 <FormContext.Provider
-                    value={[$state, setState, {useActionStateListener, useActionStateValue, ActionStateValue}]}>
+                    value={[$state, setState, {useActionStateListener, useActionStateValue, ActionStateValue,submit}]}>
                     <input ref={(dom) => hiddenActionStateRef.current = dom} type={'hidden'} name={'_actionState'}/>
                     {props.children}
                 </FormContext.Provider>
@@ -196,7 +206,8 @@ export function useRemixActionState<T extends object>(initValue?: (T | (() => T)
         useActionStateListener,
         useActionStateValue,
         ActionStateValue,
-        Form
+        Form,
+        submit
     }];
 }
 

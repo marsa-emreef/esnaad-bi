@@ -18,6 +18,7 @@ import produce from "immer";
 import {v4} from "uuid";
 import {dbTypeToJsType} from "~/db/dbTypeToJsType";
 import {MdDeleteOutline, MdOutlineSave, MdPlayArrow} from "react-icons/md";
+import PopConfirmSubmit from "~/components/PopConfirmSubmit";
 
 export const loader: LoaderFunction = async ({params}) => {
     const id = params.id;
@@ -210,10 +211,14 @@ export default function QueriesRoute() {
                         const isNew = value === '';
                         return <Horizontal hAlign={'right'}>
                             {!isNew &&
+                                <PopConfirmSubmit title={`Are you sure you want to delete this query?`} okText={'Yes'} cancelText={'No'} placement={"topRight"} >
                                 <Button type={'link'} htmlType={'submit'} style={{marginRight: 5}} name={'intent'}
                                         value={'delete'} icon={<MdDeleteOutline style={{fontSize:'1.2rem',marginRight:5,marginBottom:-5}}/>}>Delete</Button>
+                                </PopConfirmSubmit>
                             }
-                            <Button type={'primary'} htmlType={'submit'} name={'intent'} value={'save'} icon={<MdOutlineSave style={{fontSize:'1.2rem',marginRight:5,marginBottom:-5}}/>}>Save</Button>
+                            <PopConfirmSubmit title={`Are you sure you want to ${isNew?'create new':'update the'} query?`} okText={'Yes'} cancelText={'No'} placement={"topRight"} >
+                            <Button type={'primary'} htmlType={'submit'} name={'intent'} value={'save'} icon={<MdOutlineSave style={{fontSize:'1.2rem',marginRight:5,marginBottom:-5}}/>}>{isNew?'Save':'Update'}</Button>
+                            </PopConfirmSubmit>
                         </Horizontal>
                     }}/>
                 </PlainWhitePanel>
@@ -243,7 +248,7 @@ export const action: ActionFunction = async ({request}) => {
                 return {
                     enabled: false,
                     active: false,
-                    width: '',
+                    width: 0,
                     name: '',
                     key: col.key,
                     type: col.type,
@@ -314,7 +319,7 @@ function validateErrors(state: QueryModel) {
             key: '',
             type: '',
             active: false,
-            width: ''
+            width: 0
         };
         if (col.enabled) {
             if (!col.name) {

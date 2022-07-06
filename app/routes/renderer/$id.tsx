@@ -2,19 +2,20 @@ import {Horizontal, Vertical} from "react-hook-components";
 import type {ActionFunction, LoaderFunction} from "@remix-run/node";
 import {json, redirect} from "@remix-run/node";
 import {loadDb, persistDb} from "~/db/db.server";
-import {useLoaderData} from "@remix-run/react";
+import {useLoaderData, useSubmit} from "@remix-run/react";
 import type {RendererModel} from "~/db/model";
 import {actionStateFunction, useRemixActionState} from "~/remix-hook-actionstate";
 import {HeaderPanel} from "~/components/HeaderPanel";
 import {PlainWhitePanel} from "~/components/PlainWhitePanel";
 import LabelWidth from "~/components/LabelWidth";
 import Label from "~/components/Label";
-import {Button, Input, Select, Tooltip} from "antd";
+import {Button, Input, Popconfirm, Select, Tooltip} from "antd";
 import {CodeEditor} from "~/components/CodeEditor";
 import {useEffect} from "react";
 import invariant from "tiny-invariant";
 import {v4} from "uuid";
 import {MdDeleteOutline, MdOutlineSave} from "react-icons/md";
+import PopConfirmSubmit from "~/components/PopConfirmSubmit";
 
 export const loader: LoaderFunction = async ({params}) => {
     const id = params.id;
@@ -39,7 +40,7 @@ export default function UpdateRendererRoute() {
         Form,
         ActionStateValue
     }] = useRemixActionState<RendererModel & { errors?: RendererModel }>(renderer);
-
+    const submit = useSubmit();
     useEffect(() => {
         setState(renderer);
         // eslint-disable-next-line
@@ -118,11 +119,17 @@ export default function UpdateRendererRoute() {
                         const isNew = value === '';
                         return <Horizontal hAlign={'right'}>
                             {!isNew &&
+                                <PopConfirmSubmit title={`Are you sure you want to delete this renderer?`} okText={'Yes'} cancelText={'No'} placement={"topRight"} >
                                 <Button htmlType={'submit'} name={'intent'} type={"link"} value={'delete'}
                                         style={{marginRight: 5}} icon={<MdDeleteOutline style={{fontSize:'1.2rem',marginRight:5,marginBottom:-5}}/>}>Delete</Button>
+                                </PopConfirmSubmit>
                             }
+
+                            <PopConfirmSubmit title={`Are you sure you want to ${isNew?'create new':'update the'} renderer?`} okText={'Yes'} cancelText={'No'} placement={"topRight"} >
                             <Button htmlType={'submit'} name={'intent'} type={"primary"}
                                     value={'save'} icon={<MdOutlineSave style={{fontSize:'1.2rem',marginRight:5,marginBottom:-5}}/>}>{isNew ? 'Save' : 'Update'}</Button>
+                            </PopConfirmSubmit>
+
                         </Horizontal>
                     }}/>
 
@@ -181,6 +188,7 @@ export const action: ActionFunction = async ({request}) => {
             renderer.description = state.description;
         }
         await persistDb();
+        return redirect('/renderer/'+renderer?.id);
     }
     if (intent === 'delete') {
         const db = await loadDb();

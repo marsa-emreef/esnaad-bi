@@ -33,6 +33,7 @@ import {filterFunction} from "~/routes/reports/filterFunction";
 import mapFunction from "~/routes/reports/mapFunction";
 import {AiOutlineFile} from "react-icons/ai"
 import {ColumnsType} from "antd/lib/table";
+import PopConfirmSubmit from "~/components/PopConfirmSubmit";
 
 export const loader: LoaderFunction = async ({params}) => {
     const id = params.id;
@@ -679,16 +680,20 @@ export default function ReportRoute() {
                         const isNew = value === '';
                         return <Horizontal hAlign={'right'}>
                             {!isNew &&
+                                <PopConfirmSubmit title={`Are you sure you want to delete this report?`} okText={'Yes'} cancelText={'No'} placement={"topRight"} >
                                 <Button htmlType={'submit'} name={'intent'} type={"link"} value={'delete'}
                                         style={{marginRight: 5}} icon={<MdDeleteOutline
                                     style={{fontSize: '1.2rem', marginRight: 5, marginBottom: -5}}/>}>Delete</Button>
+                                </PopConfirmSubmit>
                             }
+                            <PopConfirmSubmit title={`Are you sure you want to ${isNew?'create new':'update the'} report?`} okText={'Yes'} cancelText={'No'} placement={"topRight"} >
                             <Button htmlType={'submit'} name={'intent'} type={"primary"}
                                     value={'save'} icon={<MdOutlineSave style={{
                                 fontSize: '1.2rem',
                                 marginRight: 5,
                                 marginBottom: -5
                             }}/>}>{isNew ? 'Save' : 'Update'}</Button>
+                            </PopConfirmSubmit>
                         </Horizontal>
                     }}/>
                 </PlainWhitePanel>
