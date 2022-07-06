@@ -681,7 +681,8 @@ export default function ReportRoute() {
                                     />
                                 </Collapse.Panel>
                                 <Collapse.Panel key={4} header={'Report Preview'}>
-                                    <Vertical ref={viewPortRef} h={400} w={'100%'} overflow={"auto"}
+
+                                    <Vertical ref={viewPortRef} h={400} overflow={"auto"}
                                               onScroll={(event) => {
                                                   const scrollPosition = (event.target as any).scrollLeft;
                                                   const atBeginning = scrollPosition === 0;
@@ -698,28 +699,45 @@ export default function ReportRoute() {
                                                   }
                                               }}>
                                         <Vertical ref={containerRef} style={{
-                                            width: PAPER_DIMENSION[paperSize][isLandscape ? 'height' : 'width'] + 'mm',
-                                            padding : padding+'mm',
-                                            height: '100%',
-                                            fontSize:'12px',
-                                            lineHeight:'13px'
+                                            width: PAPER_DIMENSION[paperSize??'A4'][isLandscape ? 'height' : 'width'] + 'mm',
+                                            padding: padding + 'mm',
+                                            fontSize: '12px',
+                                            lineHeight: '13px',
+                                            backgroundColor: "rgba(0,0,0,0.03)",
+                                            border : '1px solid rgba(0,0,0,0.05)'
                                         }}>
-                                            <Horizontal style={{borderBottom:'1px solid lightgray'}}>
+                                            <Horizontal style={{borderBottom: '1px solid lightgray',backgroundColor:'#333',color:'#FFF'}}>
                                                 {activeColumns.map(col => {
-                                                    return <Vertical style={{width: col.width + '%',flexGrow:0,flexShrink:0,fontWeight:'bold',padding:'5px 3px'}}
+                                                    return <Vertical style={{
+                                                        width: col.width + '%',
+                                                        flexGrow: 0,
+                                                        flexShrink: 0,
+                                                        fontWeight: 'bold',
+                                                        padding: '5px 3px'
+                                                    }}
                                                                      key={col.key}>{col.name}</Vertical>
                                                 })}
                                             </Horizontal>
-                                            {recordSet.filter((_,index) => index < 100).map((record,rowIndex) => {
-                                                return <Horizontal key={rowIndex} style={{borderBottom:'1px solid lightgray'}}>
-                                                    {activeColumns.map((col,index) => {
-                                                        return <Vertical style={{width: col.width + '%',flexGrow:0,flexShrink:0,padding:3,borderRight:'1px solid lightgray',borderLeft:index ===0 ? '1px solid lightgray':''}}
-                                                                         key={rowIndex+'-'+col.key} dangerouslySetInnerHTML={{__html:record[col.key]}}/>
+                                            {recordSet.filter((_, index) => index < 100).map((record, rowIndex) => {
+                                                return <Horizontal key={rowIndex}
+                                                                   style={{borderBottom: '1px solid lightgray'}}>
+                                                    {activeColumns.map((col, index) => {
+                                                        return <Vertical style={{
+                                                            width: col.width + '%',
+                                                            flexGrow: 0,
+                                                            flexShrink: 0,
+                                                            padding: 3,
+                                                            borderRight: '1px solid lightgray',
+                                                            borderLeft: index === 0 ? '1px solid lightgray' : ''
+                                                        }}
+                                                                         key={rowIndex + '-' + col.key}
+                                                                         dangerouslySetInnerHTML={{__html: record[col.key]}}/>
                                                     })}
                                                 </Horizontal>
                                             })}
                                         </Vertical>
                                     </Vertical>
+
                                 </Collapse.Panel>
                             </Collapse>
                         }}/>
