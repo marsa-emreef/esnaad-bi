@@ -11,7 +11,7 @@ import type {ActionFunction, LoaderFunction} from "@remix-run/node";
 import {json, redirect} from "@remix-run/node";
 import {loadDb, persistDb} from "~/db/db.server";
 import type {ShouldReloadFunction} from "@remix-run/react";
-import {useLoaderData} from "@remix-run/react";
+import {useLoaderData, useTransition} from "@remix-run/react";
 import {v4} from "uuid";
 import invariant from "tiny-invariant";
 import {query} from "~/db/esnaad.server";
@@ -124,6 +124,7 @@ const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queri
     const columns = query?.columns || emptyArray;
     const isFirstIndex = rowIndex === 0;
     const columnKey = filter.columnKey;
+    const isLoading = useTransition().state !== 'idle';
     return <Horizontal key={filter.id} mB={10}>
         <Vertical w={100} style={{flexShrink: 0, backgroundColor: isFirstIndex ? 'rgba(0,0,0,0.05)' : 'none'}}>
             {!isFirstIndex &&
@@ -208,7 +209,7 @@ const FilterRowItemRenderer = memo(function FilterRowItemRenderer(props: { queri
             </Vertical>
         </Vertical>
         <Vertical w={35} mL={5}>
-            <Button icon={<MdDelete/>} onClick={() => {
+            <Button loading={isLoading} icon={<MdDelete/>} onClick={() => {
                 setState(produce(draft => {
                     const indexId = draft.columnFilters.findIndex(cf => cf.id === filter.id);
                     draft.columnFilters.splice(indexId, 1);
@@ -225,7 +226,7 @@ function ColumnsOrderAndSort(props: { columns: ColumnModel[], setState: Dispatch
     const [selectedLeftColumns, setSelectedLeftColumns] = useState<string[]>([]);
     const totalWidth = columns?.filter(c => c.active)?.reduce((total, c) => total += (c.width ?? 0), 0) || 0;
     const expectedColumnsWidth = 100;
-
+    const isLoading = useTransition().state !== 'idle';
     return <Horizontal>
         <Vertical style={{
             border: '1px solid rgba(0,0,0,0.1)',
@@ -271,7 +272,7 @@ function ColumnsOrderAndSort(props: { columns: ColumnModel[], setState: Dispatch
                             </Tooltip>
                         </Vertical>
                         <Vertical style={{opacity: isLastIndex ? 0 : 1}} mR={5}>
-                            <Button type={"dashed"} onClick={() => {
+                            <Button loading={isLoading} type={"dashed"} onClick={() => {
                                 setState(produce(old => {
                                     const colIndex = old.columns.findIndex(c => c.key === col.key);
                                     const {nextActiveIndex} = old.columns.reduce((res, col, index) => {
@@ -293,7 +294,7 @@ function ColumnsOrderAndSort(props: { columns: ColumnModel[], setState: Dispatch
                             }} icon={<MdKeyboardArrowDown style={{fontSize: '1.5rem'}}/>}/>
                         </Vertical>
                         <Vertical style={{opacity: isFirstIndex ? 0 : 1}}>
-                            <Button type={"dashed"} icon={<MdKeyboardArrowUp style={{fontSize: '1.5rem'}}/>}
+                            <Button loading={isLoading} type={"dashed"} icon={<MdKeyboardArrowUp style={{fontSize: '1.5rem'}}/>}
                                     onClick={() => {
 
                                         setState(produce(old => {
@@ -327,7 +328,7 @@ function ColumnsOrderAndSort(props: { columns: ColumnModel[], setState: Dispatch
 
 
         <Vertical vAlign={'center'}>
-            <Button disabled={selectedRightColumns.length === 0} style={{marginBottom: 5}}
+            <Button loading={isLoading} disabled={selectedRightColumns.length === 0} style={{marginBottom: 5}}
                     icon={<MdKeyboardArrowLeft style={{fontSize: '1.5rem'}}/>}
                     onClick={() => {
                         setState(produce(state => {
@@ -339,7 +340,7 @@ function ColumnsOrderAndSort(props: { columns: ColumnModel[], setState: Dispatch
                         setSelectedRightColumns([]);
                     }}
             />
-            <Button disabled={selectedLeftColumns.length === 0}
+            <Button loading={isLoading} disabled={selectedLeftColumns.length === 0}
                     icon={<MdKeyboardArrowRight style={{fontSize: '1.5rem'}}
                                                 onClick={() => {
                                                     setState(produce(state => {
@@ -404,6 +405,7 @@ export default function ReportRoute() {
     const errors = $state.current?.errors;
     const viewPortRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
+    const isLoading = useTransition().state !== 'idle';
     return <Vertical h={'100%'}>
         <ActionStateValue selector={_ => $state?.current?.name || 'New Report'} render={(value) => {
             return <HeaderPanel title={value}/>
@@ -463,7 +465,7 @@ export default function ReportRoute() {
                                     </Tooltip>
                                 }}/>
                             </Vertical>
-                            <Button htmlType={'submit'} name={'intent'} value={'runQuery'} type={'primary'}
+                            <Button loading={isLoading} htmlType={'submit'} name={'intent'} value={'runQuery'} type={'primary'}
                                     icon={<MdPlayArrow
                                         style={{marginRight: 5, marginBottom: -5, fontSize: '1.2rem'}}/>}>Run
                                 Query</Button>
@@ -494,12 +496,12 @@ export default function ReportRoute() {
                                             />
                                         })}
                                         <Horizontal hAlign={'right'}>
-                                            <Button type={"dashed"} style={{marginRight: 5}}
+                                            <Button loading={isLoading} type={"dashed"} style={{marginRight: 5}}
                                                     htmlType={'submit'} name={'intent'}
                                                     value={'applyFilter'} icon={<MdOutlineUpdate
                                                 style={{fontSize: '1.2rem', marginBottom: -5, marginRight: 5}}/>}>Apply
                                                 Filter</Button>
-                                            <Button type={"primary"} onClick={() => {
+                                            <Button loading={isLoading} type={"primary"} onClick={() => {
                                                 setState(val => {
                                                     const columnFilters = [...val?.columnFilters];
                                                     const colFilter: ColumnFilterModel = {
@@ -749,7 +751,7 @@ export default function ReportRoute() {
                             {!isNew &&
                                 <PopConfirmSubmit title={`Are you sure you want to delete this report?`} okText={'Yes'}
                                                   cancelText={'No'} placement={"topRight"}>
-                                    <Button htmlType={'submit'} name={'intent'} type={"link"} value={'delete'}
+                                    <Button loading={isLoading} htmlType={'submit'} name={'intent'} type={"link"} value={'delete'}
                                             style={{marginRight: 5}} icon={<MdDeleteOutline
                                         style={{
                                             fontSize: '1.2rem',
@@ -761,7 +763,7 @@ export default function ReportRoute() {
                             <PopConfirmSubmit
                                 title={`Are you sure you want to ${isNew ? 'create new' : 'update the'} report?`}
                                 okText={'Yes'} cancelText={'No'} placement={"topRight"}>
-                                <Button htmlType={'submit'} name={'intent'} type={"primary"}
+                                <Button loading={isLoading} htmlType={'submit'} name={'intent'} type={"primary"}
                                         value={'save'} icon={<MdOutlineSave style={{
                                     fontSize: '1.2rem',
                                     marginRight: 5,

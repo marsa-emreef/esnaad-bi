@@ -4,7 +4,7 @@ import type {ActionFunction, LoaderFunction} from "@remix-run/node";
 import {json, redirect} from "@remix-run/node";
 import {loadDb, persistDb} from "~/db/db.server";
 import type {ColumnModel, QueryModel, RendererModel} from "~/db/model";
-import {useLoaderData} from "@remix-run/react";
+import {useLoaderData, useTransition} from "@remix-run/react";
 import {actionStateFunction, useRemixActionState, useRemixActionStateInForm} from "~/remix-hook-actionstate";
 import {PlainWhitePanel} from "~/components/PlainWhitePanel";
 import Label from "~/components/Label";
@@ -114,7 +114,7 @@ export default function QueriesRoute() {
     }, [id]);
 
     const errors = $state.current?.errors;
-
+    const isLoading = useTransition().state !== 'idle';
     return <Vertical h={'100%'}>
         <ActionStateValue selector={state => state?.name} render={(value) => {
             return <HeaderPanel title={value}/>
@@ -169,7 +169,7 @@ export default function QueriesRoute() {
 
                     </Label>
                     <Horizontal hAlign={'right'}>
-                        <Button htmlType={'submit'} type={'primary'} name={'intent'} value={'runQuery'} icon={<MdPlayArrow style={{marginRight:5,marginBottom:-5,fontSize:'1.2rem'}}/>}>Run
+                        <Button loading={isLoading} htmlType={'submit'} type={'primary'} name={'intent'} value={'runQuery'} icon={<MdPlayArrow style={{marginRight:5,marginBottom:-5,fontSize:'1.2rem'}}/>}>Run
                             Query</Button>
                     </Horizontal>
                     <Divider orientation={"left"}>Column Mapping</Divider>
@@ -212,12 +212,12 @@ export default function QueriesRoute() {
                         return <Horizontal hAlign={'right'}>
                             {!isNew &&
                                 <PopConfirmSubmit title={`Are you sure you want to delete this query?`} okText={'Yes'} cancelText={'No'} placement={"topRight"} >
-                                <Button type={'link'} htmlType={'submit'} style={{marginRight: 5}} name={'intent'}
+                                <Button loading={isLoading} type={'link'} htmlType={'submit'} style={{marginRight: 5}} name={'intent'}
                                         value={'delete'} icon={<MdDeleteOutline style={{fontSize:'1.2rem',marginRight:5,marginBottom:-5}}/>}>Delete</Button>
                                 </PopConfirmSubmit>
                             }
                             <PopConfirmSubmit title={`Are you sure you want to ${isNew?'create new':'update the'} query?`} okText={'Yes'} cancelText={'No'} placement={"topRight"} >
-                            <Button type={'primary'} htmlType={'submit'} name={'intent'} value={'save'} icon={<MdOutlineSave style={{fontSize:'1.2rem',marginRight:5,marginBottom:-5}}/>}>{isNew?'Save':'Update'}</Button>
+                            <Button loading={isLoading} type={'primary'} htmlType={'submit'} name={'intent'} value={'save'} icon={<MdOutlineSave style={{fontSize:'1.2rem',marginRight:5,marginBottom:-5}}/>}>{isNew?'Save':'Update'}</Button>
                             </PopConfirmSubmit>
                         </Horizontal>
                     }}/>

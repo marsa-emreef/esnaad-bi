@@ -2,7 +2,7 @@ import {Horizontal, Vertical} from "react-hook-components";
 import type {ActionFunction, LoaderFunction} from "@remix-run/node";
 import {json, redirect} from "@remix-run/node";
 import {loadDb, persistDb} from "~/db/db.server";
-import {useLoaderData, useSubmit} from "@remix-run/react";
+import {useLoaderData, useSubmit, useTransition} from "@remix-run/react";
 import type {RendererModel} from "~/db/model";
 import {actionStateFunction, useRemixActionState} from "~/remix-hook-actionstate";
 import {HeaderPanel} from "~/components/HeaderPanel";
@@ -45,6 +45,8 @@ export default function UpdateRendererRoute() {
         setState(renderer);
         // eslint-disable-next-line
     }, [id]);
+    const transition = useTransition();
+    const isLoading = transition.state !== 'idle';
 
     return <Vertical>
         <ActionStateValue selector={state => state?.name} render={(value) => {
@@ -120,13 +122,13 @@ export default function UpdateRendererRoute() {
                         return <Horizontal hAlign={'right'}>
                             {!isNew &&
                                 <PopConfirmSubmit title={`Are you sure you want to delete this renderer?`} okText={'Yes'} cancelText={'No'} placement={"topRight"} >
-                                <Button htmlType={'submit'} name={'intent'} type={"link"} value={'delete'}
+                                <Button loading={isLoading} htmlType={'submit'} name={'intent'} type={"link"} value={'delete'}
                                         style={{marginRight: 5}} icon={<MdDeleteOutline style={{fontSize:'1.2rem',marginRight:5,marginBottom:-5}}/>}>Delete</Button>
                                 </PopConfirmSubmit>
                             }
 
                             <PopConfirmSubmit title={`Are you sure you want to ${isNew?'create new':'update the'} renderer?`} okText={'Yes'} cancelText={'No'} placement={"topRight"} >
-                            <Button htmlType={'submit'} name={'intent'} type={"primary"}
+                            <Button loading={isLoading} htmlType={'submit'} name={'intent'} type={"primary"}
                                     value={'save'} icon={<MdOutlineSave style={{fontSize:'1.2rem',marginRight:5,marginBottom:-5}}/>}>{isNew ? 'Save' : 'Update'}</Button>
                             </PopConfirmSubmit>
 
